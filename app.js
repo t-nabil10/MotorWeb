@@ -1,13 +1,17 @@
 'use strict';
 /* ===== MOTOR MANAGER PRO v2 — données & utilitaires ===== */
-const KEY='mmp_v2',KT='mmp_gh_token',KM='mmp_meta',MN=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const KEY='mmp_v3',K2='mmp_v2',KT='mmp_gh_token',KM='mmp_meta',MN=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const def=()=>({v:2,s:{veh:'Mon véhicule',start:9,end:6,price:15.2,ivl:5000,warn:500,big:500,cur:'DH',rd:14,bud:{},remain:null,tank:null,l100ref:null,l100mode:'auto',ce:['Carburant','Parking','Entretien','Vidange','Assurance','Autres'],cr:['Cours','Parking','Autres'],gh:{owner:'',repo:'',branch:'main',path:'backups/motor-manager-backup.json',freq:'manual',snap:false}},km:[],exp:[],rev:[],fuel:[],oil:[],rem:[]});
 function merge(d,x){const gh=Object.assign(def().s.gh,x.s&&x.s.gh);Object.assign(d.s,x.s);d.s.gh=gh;['km','exp','rev','fuel','oil','rem'].forEach(k=>d[k]=Array.isArray(x[k])?x[k]:[]);return d}
-function load(){try{let x=JSON.parse(localStorage.getItem(KEY));if(!x){const o=JSON.parse(localStorage.getItem('mmp_v1'));if(o&&o.s){const sd={};o.km.forEach(r=>{if(!sd[r.date]||r.odo>sd[r.date].odo)sd[r.date]=r});x={s:{veh:o.s.veh,start:o.s.start,end:o.s.end,price:o.s.price,cur:o.s.cur,ce:o.s.ce,cr:o.s.cr},km:Object.values(sd).map(r=>({id:r.id,date:r.date,odo:r.odo})),exp:o.exp,rev:o.rev,fuel:o.fuel.map(f=>({...f,full:true})),oil:[]}}}if(x&&x.s)return merge(def(),x)}catch(e){}return def()}
-let D=load(),V='sai',AF=null;const F={},E={},CH={},P={type:'saison',from:'',to:''};
+function load1(){try{let x=JSON.parse(localStorage.getItem(K2));if(!x){const o=JSON.parse(localStorage.getItem('mmp_v1'));if(o&&o.s){const sd={};o.km.forEach(r=>{if(!sd[r.date]||r.odo>sd[r.date].odo)sd[r.date]=r});x={s:{veh:o.s.veh,start:o.s.start,end:o.s.end,price:o.s.price,cur:o.s.cur,ce:o.s.ce,cr:o.s.cr},km:Object.values(sd).map(r=>({id:r.id,date:r.date,odo:r.odo})),exp:o.exp,rev:o.rev,fuel:o.fuel.map(f=>({...f,full:true})),oil:[]}}}if(x&&x.s)return merge(def(),x)}catch(e){}return def()}
+const nid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function loadDB(){try{const x=JSON.parse(localStorage.getItem(KEY));if(x&&Array.isArray(x.list)&&x.list.length){const list=x.list.map(v=>{const d=merge(def(),v);d.id=v.id||nid();return d});return{v:3,act:list.some(v=>v.id==x.act)?x.act:list[0].id,list,gh:Object.assign(def().s.gh,x.gh)}}}catch(e){}
+  const d=load1();d.id=nid();return{v:3,act:d.id,list:[d],gh:d.s.gh}}
+let DB=loadDB(),D=DB.list.find(v=>v.id==DB.act)||DB.list[0],V='sai',AF=null;
+const linkGh=()=>DB.list.forEach(v=>v.s.gh=DB.gh);linkGh();const F={},E={},CH={},P={type:'saison',from:'',to:''};
 let M=Object.assign({st:'none',last:null,size:null,err:'',hash:null,local:null,dirty:false},(()=>{try{return JSON.parse(localStorage.getItem(KM))||{}}catch(e){return{}}})());
 const saveM=()=>localStorage.setItem(KM,JSON.stringify(M));
-const save=nd=>{localStorage.setItem(KEY,JSON.stringify(D));if(!nd){M.dirty=true;saveM();sched()}};
+const save=nd=>{localStorage.setItem(KEY,JSON.stringify(DB));if(!nd){M.dirty=true;saveM();sched()}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const $=s=>document.querySelector(s);
 const nf=new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -136,11 +140,11 @@ function cardLabels(){document.querySelectorAll('table.table-cards').forEach(t=>
   t.querySelectorAll('tbody tr,tfoot tr').forEach(r=>[...r.children].forEach((c,i)=>{if(h[i]&&!(i==0&&r.parentNode.tagName=='TFOOT'))c.setAttribute('data-label',h[i])}))})}
 
 /* ===== Navigation ===== */
-const NAV=[['sai','Saisie du jour','pen-to-square'],['dash','Tableau de bord','gauge-high'],['fuel','Carburant','gas-pump'],['oil','Vidange','oil-can'],['mnt','Entretien','screwdriver-wrench'],['stat','Statistiques','chart-column'],['hkm','Historique km','road'],['hexp','Historique dépenses','wallet'],['hrev','Historique recettes','sack-dollar'],['imp','Importer des données','file-import'],['rep','Rapports & exports','file-export'],['bak','Sauvegarde','cloud-arrow-up'],['set','Paramètres','gear'],['ins','Installer l\'app','download']];
+const NAV=[['sai','Saisie du jour','pen-to-square'],['dash','Tableau de bord','gauge-high'],['fuel','Carburant','gas-pump'],['oil','Vidange','oil-can'],['mnt','Entretien','screwdriver-wrench'],['stat','Statistiques','chart-column'],['hkm','Historique km','road'],['hexp','Historique dépenses','wallet'],['hrev','Historique recettes','sack-dollar'],['imp','Importer des données','file-import'],['rep','Rapports & exports','file-export'],['bak','Sauvegarde','cloud-arrow-up'],['veh','Véhicules','car'],['set','Paramètres','gear'],['ins','Installer l\'app','download']];
 function go(v){V=v;$('#side').classList.remove('open');render();scrollTo(0,0)}
 function render(){Object.values(CH).forEach(c=>c.destroy());for(const k in CH)delete CH[k];
   $('#nav').innerHTML=NAV.map(n=>`<a class="${n[0]==V?'on':''}" onclick="go('${n[0]}')"><i class="fa-solid fa-${n[2]}"></i>${n[1]}</a>`).join('')+(typeof DIP!='undefined'&&DIP&&!standalone()?'<a onclick="doInstall()" style="background:rgba(233,162,59,.18);color:#e9a23b"><i class="fa-solid fa-download"></i>Installer l\'application</a>':'');
-  $('#bnav').innerHTML=bnav();$('#ttl').textContent=NAV.find(n=>n[0]==V)[1];AF=null;$('#main').innerHTML=VW[V]();cardLabels();AF&&AF()}
+  $('#vsel').innerHTML=vopts();$('#bnav').innerHTML=bnav();$('#ttl').textContent=NAV.find(n=>n[0]==V)[1];AF=null;$('#main').innerHTML=VW[V]();cardLabels();AF&&AF()}
 
 /* ===== Saisie quotidienne ===== */
 const X={date:today(),odo:null,xl:[{cat:'',desc:'',amt:''}],rl:[{cat:'',desc:'',amt:''}]};
@@ -264,6 +268,44 @@ VW.mnt=()=>{const rec=E.rem?D.rem.find(x=>x.id==E.rem):null,v=(k,d='')=>rec&&rec
   <div class="col-12"><button class="btn btn-acc" onclick="remSave()"><i class="fa-solid fa-check"></i> Enregistrer</button> ${rec?`<button class="btn btn-light" onclick="E.rem=null;render()">Annuler</button>`:''}</div></div>
   <div class="small text-muted mt-2">Renseignez un intervalle en mois (assurance, vignette, contrôle technique), en km (pneus, plaquettes) ou les deux : le rappel s'active dès qu'une des deux échéances est atteinte. « Bientôt dû » = moins de 30 jours ou moins de ${fn(D.s.warn,' km')} (seuil des Paramètres). Le bouton « Fait » remet le rappel à zéro et peut enregistrer la dépense.</div></div>`};
 
+/* ===== Plusieurs véhicules : D = véhicule actif, DB = tous les véhicules ===== */
+const vopts=()=>DB.list.map(v=>`<option value="${esc(v.id)}" ${v.id==DB.act?'selected':''}>${esc(v.s.veh)}</option>`).join('')+'<option value="__new">+ Ajouter un véhicule…</option>';
+function vchg(id){if(id=='__new')return addVeh();switchVeh(id)}
+function switchVeh(id,quiet){const v=DB.list.find(x=>x.id==id);if(!v)return;DB.act=id;D=v;SY=null;Object.keys(E).forEach(k=>E[k]=null);Object.keys(F).forEach(k=>delete F[k]);
+  X.odo=null;X.xl=[{cat:'',desc:'',amt:''}];X.rl=[{cat:'',desc:'',amt:''}];save(1);render();if(!quiet)toast('Véhicule actif : '+v.s.veh)}
+function addVeh(n){if(n===undefined)n=prompt('Nom du nouveau véhicule :','');n=(n||'').trim();if(!n){render();return}
+  const d=def();Object.assign(d.s,JSON.parse(JSON.stringify(D.s)),{veh:n,remain:null,tank:null,l100ref:null});d.id=uid();DB.list.push(d);linkGh();switchVeh(d.id,1);toast('Véhicule « '+n+' » ajouté (réglages copiés depuis le précédent, données vides)')}
+function delVeh(id){if(DB.list.length<2)return toast('Impossible de supprimer le seul véhicule',1);const v=DB.list.find(x=>x.id==id);if(!v)return;
+  if((prompt('Supprimer « '+v.s.veh+' » et toutes ses données ('+v.km.length+' relevés, '+v.exp.length+' dépenses, '+v.rev.length+' recettes) ?\nTapez SUPPRIMER pour confirmer.')||'')!=='SUPPRIMER')return;
+  const i=DB.list.indexOf(v);DB.list.splice(i,1);if(DB.act==id)switchVeh(DB.list[0].id,1);else{save();render()}
+  toast('Véhicule supprimé',0,{l:'Annuler',f:()=>{DB.list.splice(Math.min(i,DB.list.length),0,v);save();render();toast('Véhicule restauré')}})}
+function withVeh(v,f){const o=D,s0=SY;D=v;SY=null;try{return f()}finally{D=o;SY=s0}}
+function fleet(){return DB.list.map(v=>withVeh(v,()=>{const t=T(SR()),cs=costStat();return{id:v.id,name:v.s.veh,km:t.km,v:t.v,e:t.e,net:t.net,cpk:cs.cpk,late:(D.rem||[]).filter(q=>remStat(q).rank==0).length,soon:(D.rem||[]).filter(q=>remStat(q).rank==1).length}}))}
+VW.veh=()=>{const rows=fleet(),sum=k=>rows.reduce((s,x)=>s+x[k],0);
+  return`<div class="card mb-3"><div class="table-responsive"><table class="table table-cards mb-0"><thead><tr><th>Véhicule</th><th class="num">Km</th><th class="num">Recettes</th><th class="num">Dépenses</th><th class="num">Solde</th><th class="num">Coût/km</th><th>Entretien</th><th></th></tr></thead><tbody>
+  ${rows.map(x=>`<tr><td><b>${esc(x.name)}</b> ${x.id==DB.act?'<span class="badge text-bg-warning">actif</span>':''}</td><td class="num">${fn(x.km,' km')}</td><td class="num">${fm(x.v)}</td><td class="num">${fm(x.e)}</td><td class="num ${x.net<0?'text-danger':'text-success'}">${fm(x.net)}</td><td class="num">${x.cpk==null?'-':fn(x.cpk,' DH/km')}</td><td>${x.late?`<span class="badge text-bg-danger">${x.late} en retard</span> `:''}${x.soon?`<span class="badge text-bg-warning">${x.soon} bientôt</span>`:''}${x.late||x.soon?'':'<span class="text-muted">—</span>'}</td>
+  <td class="num">${x.id==DB.act?'':`<button class="btn btn-sm btn-acc" onclick="switchVeh('${x.id}')">Activer</button> `}<button class="btn btn-sm btn-light text-danger" onclick="delVeh('${x.id}')" aria-label="Supprimer ${esc(x.name)}"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')}
+  </tbody><tfoot><tr class="fw-bold"><td>Total (${rows.length})</td><td class="num">${fn(sum('km'),' km')}</td><td class="num">${fm(sum('v'))}</td><td class="num">${fm(sum('e'))}</td><td class="num">${fm(sum('net'))}</td><td></td><td></td><td></td></tr></tfoot></table></div></div>
+  <div class="card p-3 mb-3"><b class="mb-2">Ajouter un véhicule</b><div class="row g-2 align-items-end">${inp('nv_name','Nom du véhicule','','text','col-md-6 col-12')}<div class="col-md-3 col-6"><button class="btn btn-acc" onclick="addVeh($('#nv_name').value)"><i class="fa-solid fa-plus"></i> Ajouter</button></div></div></div>
+  <div class="alert alert-info small">Chaque véhicule a ses propres relevés, dépenses, recettes, pleins, vidanges, rappels, budgets, saison et catégories (un nouveau véhicule reprend les réglages du véhicule actif, sans les données). Le tableau compare la saison en cours de chacun. Les imports, les exports Excel/PDF et les pages de saisie portent sur le <b>véhicule actif</b> (sélecteur en haut). La sauvegarde JSON / GitHub contient <b>tous</b> les véhicules.</div>`};
+
+/* ===== Rapports PDF mensuel / saison + partage WhatsApp ===== */
+let RM='';
+const RMv=()=>RM||today().slice(0,7);
+const slug=s=>norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'vehicule';
+function repCtx(k){const r=k=='oil'?ALL:k=='mois'?monthR():SR();return{r,t:T(r),per:k=='mois'?MN[+RMv().slice(5,7)-1]+' '+RMv().slice(0,4):k=='oil'?'Historique complet':slabel(sy())}}
+function alertsList(){return(D.rem||[]).map(q=>({q,s:remStat(q)})).filter(x=>x.s.rank<2)}
+function waSummary(k,per,t){const L=['*Motor Manager Pro* — '+D.s.veh,per,'','Recettes : '+fm(t.v),'Dépenses : '+fm(t.e),'Solde net : '+fm(t.net),'Kilomètres : '+fn(t.km,' km'),'Carburant : '+fm(t.fe)];
+  if(t.epk!=null)L.push('Dépenses / km : '+fn(t.epk,' DH/km'));
+  if(k=='saison'){const c=costStat();if(c.cpk!=null)L.push('Coût au km (carburant + entretien + assurance) : '+fn(c.cpk,' DH/km'));if(c.live)L.push('Projection fin de saison : '+fm(c.pt)+' pour '+fn(c.pk,' km')+' ('+(c.pcpk==null?'-':fn(c.pcpk,' DH/km'))+')')}
+  const al=alertsList();if((k=='saison'||k=='mois')&&al.length)L.push('','Entretien à prévoir : '+al.map(x=>x.q.name+' ('+x.s.lbl.toLowerCase()+')').join(', '));
+  return L.map(x=>String(x).replace(/[\u202f\u00a0]/g,' ')).join('\n')}
+function waText(k){const c=repCtx(k);window.open('https://wa.me/?text='+encodeURIComponent(waSummary(k,c.per,c.t)),'_blank')}
+function pdfShare(k){const b=pdfBuild(k),f=typeof File=='function'?new File([b.d.output('blob')],b.name,{type:'application/pdf'}):null;
+  if(f&&navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:b.name,text:b.txt}).catch(e=>{if(e&&e.name!='AbortError')toast('Partage impossible : '+e.message,1)});return}
+  b.d.save(b.name);window.open('https://wa.me/?text='+encodeURIComponent(b.txt),'_blank');toast('PDF téléchargé : joignez-le à la conversation WhatsApp')}
+const pdf=k=>{const b=pdfBuild(k);b.d.save(b.name)};
+
 /* ===== Tableau de bord & statistiques ===== */
 VW.dash=()=>{const r=range(),t=T(r),ms=monthly(),L=ms.map(x=>x.name.slice(0,4)),fs=fstat(),o=oilStat();
   AF=()=>{ch('c1','bar',L,[{label:'Recettes',data:ms.map(x=>x.v)},{label:'Dépenses',data:ms.map(x=>x.e)}]);ch('c2','line',L,[{label:'Solde net (DH)',data:ms.map(x=>x.net)}]);const cs=catSum(D.exp,r);ch('c3','doughnut',Object.keys(cs),[{data:Object.values(cs)}]);
@@ -295,36 +337,41 @@ function sheet(k,r){const S=a=>srt(a.filter(x=>inR(x.date,r)),1),n=(a,i)=>a[i];
 function xl(keys,name,r=ALL){const wb=XLSX.utils.book_new();keys.forEach(k=>{const[n,h,rows,money,tot]=sheet(k,r),tr=h.map((_,i)=>i==0?'Total':tot.includes(i)?rows.reduce((s,x)=>s+(+x[i]||0),0):''),ws=XLSX.utils.aoa_to_sheet([h,...rows,tr]);
   ws['!cols']=h.map((x,i)=>({wch:Math.max(x.length,...rows.map(q=>String(q[i]??'').length))+3}));
   for(let q=1;q<=rows.length+1;q++)money.forEach(c=>{const a=ws[XLSX.utils.encode_cell({r:q,c})];if(a&&typeof a.v=='number')a.z='#,##0.00 "DH"'});XLSX.utils.book_append_sheet(wb,ws,n)});
-  XLSX.writeFile(wb,name+'-'+today()+'.xlsx')}
-const monthR=()=>{const k=today().slice(0,7);return[k+'-01',k+'-31']};
-function pdf(k){const{jsPDF}=window.jspdf,d=new jsPDF();let y=34;const now=new Date(),r=k=='oil'?ALL:k=='mois'?monthR():SR(),t=T(r),ti={mois:'Rapport financier mensuel',saison:'Rapport saisonnier complet',exp:'Détail des dépenses',rev:'Détail des recettes',km:'Rapport kilométrage',fuel:'Rapport carburant',oil:'Historique des vidanges'}[k],per=k=='mois'?MN[now.getMonth()]+' '+now.getFullYear():k=='oil'?'Historique complet':slabel(sy()),cl=s=>String(s).replace(/[\u202f\u00a0]/g,' ');
+  XLSX.writeFile(wb,name+'-'+slug(D.s.veh)+'-'+today()+'.xlsx')}
+const monthR=()=>{const k=RMv();return[k+'-01',k+'-31']};
+function pdfBuild(k){const{jsPDF}=window.jspdf,d=new jsPDF();let y=34;const now=new Date(),r=k=='oil'?ALL:k=='mois'?monthR():SR(),t=T(r),ti={mois:'Rapport financier mensuel',saison:'Rapport saisonnier complet',exp:'Détail des dépenses',rev:'Détail des recettes',km:'Rapport kilométrage',fuel:'Rapport carburant',oil:'Historique des vidanges'}[k],per=k=='mois'?MN[+RMv().slice(5,7)-1]+' '+RMv().slice(0,4):k=='oil'?'Historique complet':slabel(sy()),cl=s=>String(s).replace(/[\u202f\u00a0]/g,' ');
   d.setFillColor(20,33,61);d.rect(0,0,210,24,'F');d.setTextColor(255);d.setFontSize(15);d.setFont('helvetica','bold');d.text('MOTOR MANAGER PRO',14,15);d.setFontSize(9);d.setFont('helvetica','normal');d.text(ti,196,15,{align:'right'});d.setTextColor(0);
   const txt=(s,b,z)=>{if(y>282){d.addPage();y=18}d.setFont('helvetica',b?'bold':'normal');d.setFontSize(z||10);d.text(cl(s),14,y);y+=z?8:6};
   txt(D.s.veh+'  |  '+per+'  |  Généré le '+fd(today()),0,9);y+=2;
   [['Recettes',fm(t.v)],['Dépenses',fm(t.e)],['Solde net',fm(t.net)],['Kilomètres',fn(t.km,' km')],['Carburant',fm(t.fe)],['Dépenses/km',fn(t.epk,' DH/km')],['Recettes/km',fn(t.vpk,' DH/km')]].forEach(x=>txt(x[0]+' : '+x[1],1));y+=3;
+  if(k=='saison'){const c=costStat();[['Coût carburant',fm(c.c.Carburant)],['Coût entretien et vidange',fm(c.c.Entretien)],['Coût assurance',fm(c.c.Assurance)],['Coût total au km',c.cpk==null?'-':fn(c.cpk,' DH/km')]].forEach(x=>txt(x[0]+' : '+x[1],1));if(c.live)txt('Projection fin de saison : '+fm(c.pt)+' pour '+fn(c.pk,' km'),1);y+=3}
+  const al=alertsList();if((k=='saison'||k=='mois')&&al.length){txt('Entretien à prévoir :',1);al.forEach(x=>txt('- '+x.q.name+' ('+x.s.lbl.toLowerCase()+(x.s.nd?', échéance '+fd(x.s.nd):'')+')',0));y+=3}
   if(k=='saison'||k=='mois'){const ms=monthly(),c=document.createElement('canvas');c.width=900;c.height=360;const cc=new Chart(c,{type:'bar',data:{labels:ms.map(x=>x.name.slice(0,4)),datasets:[{label:'Recettes',data:ms.map(x=>x.v),backgroundColor:'#1f6f8b'},{label:'Dépenses',data:ms.map(x=>x.e),backgroundColor:'#e07a5f'}]},options:{animation:false,responsive:false}});const im=c.toDataURL('image/png');cc.destroy();d.addImage(im,'PNG',14,y,180,72);y+=78}
   const keys={mois:['exp','rev'],saison:['stat'],exp:['exp'],rev:['rev'],km:['km'],fuel:['fuel','cyc'],oil:['oil']}[k];
   keys.forEach(s=>{const[n,h,rows,,tot]=sheet(s,r),w=182/h.length;y+=2;txt(n,1,11);
     const line=(a,b)=>{if(y>284){d.addPage();y=18}d.setFont('helvetica',b?'bold':'normal');d.setFontSize(8);a.forEach((c,i)=>{const x=14+w*i;typeof c=='number'?d.text(cl(nf.format(c)),x+w-2,y,{align:'right'}):d.text(cl(c??'').slice(0,Math.floor(w/1.8)),x,y)});y+=5.5};
     line(h,1);rows.forEach(q=>line(q));line(h.map((_,i)=>i==0?'Total':tot.includes(i)?rows.reduce((s2,x)=>s2+(+x[i]||0),0):''),1)});
-  d.save('motor-manager-'+k+'-'+today()+'.pdf')}
+  return{d,name:'motor-manager-'+slug(D.s.veh)+'-'+k+'-'+today()+'.pdf',txt:waSummary(k,per,t)}}
 VW.rep=()=>{const b=(f,l,i)=>`<button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="${f}"><i class="fa-solid fa-${i}"></i> ${l}</button>`;
   const xb=(l,ks,n,r)=>b(`xl(${JSON.stringify(ks).replace(/"/g,"'")},'${n}',${r})`,l,'file-excel');
   return`<div class="row g-3"><div class="col-lg-6"><div class="card p-3 h-100"><b>Exports Excel</b><p class="small text-muted">Tri chronologique, formats DH et dates, totaux, colonnes ajustées.</p>${xb('Rapport complet',['exp','rev','km','fuel','cyc','oil','stat'],'rapport-complet','ALL')}${xb('Rapport mensuel',['exp','rev','km','fuel','cyc','oil'],'rapport-mensuel','monthR()')}${xb('Rapport saisonnier',['exp','rev','km','fuel','cyc','oil','stat'],'rapport-saisonnier','SR()')}${xb('Dépenses',['exp'],'depenses','ALL')}${xb('Recettes',['rev'],'recettes','ALL')}${xb('Kilométrage',['km'],'kilometrage','ALL')}${xb('Consommation carburant',['fuel','cyc'],'carburant','ALL')}${xb('Vidanges',['oil'],'vidanges','ALL')}</div></div>
-  <div class="col-lg-6"><div class="card p-3 h-100"><b>Rapports PDF</b><p class="small text-muted">Indicateurs, graphique (rapports mensuel et saisonnier), tableaux et totaux.</p>${b("pdf('mois')",'Mensuel','file-pdf')}${b("pdf('saison')",'Saisonnier','file-pdf')}${b("pdf('exp')",'Dépenses','file-pdf')}${b("pdf('rev')",'Recettes','file-pdf')}${b("pdf('km')",'Kilométrage','file-pdf')}${b("pdf('fuel')",'Carburant','file-pdf')}${b("pdf('oil')",'Vidanges','file-pdf')}</div></div></div>`};
+  <div class="col-lg-6"><div class="card p-3 h-100"><b>Rapports PDF</b><p class="small text-muted">Indicateurs, graphique (rapports mensuel et saisonnier), coût au km, entretien à prévoir, tableaux et totaux. Le mois choisi vaut aussi pour l'export Excel mensuel.</p><div class="row g-2 mb-2"><div class="col-md-4 col-6"><label class="form-label small">Mois (rapport mensuel)</label><input type="month" class="form-control" value="${RMv()}" onchange="RM=this.value;render()"></div>${ssel()}</div>${b("pdf('mois')",'Mensuel','file-pdf')}${b("pdf('saison')",'Saisonnier','file-pdf')}${b("pdf('exp')",'Dépenses','file-pdf')}${b("pdf('rev')",'Recettes','file-pdf')}${b("pdf('km')",'Kilométrage','file-pdf')}${b("pdf('fuel')",'Carburant','file-pdf')}${b("pdf('oil')",'Vidanges','file-pdf')}
+  <hr class="my-3"><b><i class="fa-brands fa-whatsapp"></i> Partager sur WhatsApp</b><p class="small text-muted mt-1">Sur téléphone, le menu de partage s'ouvre avec le PDF joint : choisissez WhatsApp. Sinon le PDF est téléchargé et WhatsApp s'ouvre avec le résumé : joignez simplement le fichier.</p>${b("pdfShare('mois')",'PDF mensuel','share-nodes')}${b("pdfShare('saison')",'PDF saisonnier','share-nodes')}${b("waText('mois')",'Résumé mensuel (texte)','comment')}${b("waText('saison')",'Résumé saisonnier (texte)','comment')}</div></div></div>`};
 
 /* ===== Sauvegarde locale JSON ===== */
-const snapshot=()=>{const data=JSON.parse(JSON.stringify(D));delete data.s.gh;return{app:'motor-manager-pro',version:2,exportedAt:new Date().toISOString(),data}};
+const snapshot=()=>{const vs=DB.list.map(v=>{const d=JSON.parse(JSON.stringify(v));delete d.s.gh;return d});return{app:'motor-manager-pro',version:3,exportedAt:new Date().toISOString(),data:{act:DB.act,vehicles:vs}}};
 const hash=o=>{const s=JSON.stringify(o);let h=5381;for(let i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return h+':'+s.length};
-function validB(o){return o&&o.app=='motor-manager-pro'&&typeof o.version=='number'&&o.version<=2&&o.data&&o.data.s&&['km','exp','rev','fuel','oil'].every(k=>Array.isArray(o.data[k]))&&Array.isArray(o.data.s.ce)&&Array.isArray(o.data.s.cr)}
-function restore(o,src,fromGh){if(!validB(o))return toast('Sauvegarde invalide ou version non prise en charge',1);const n=o.data;
-  if(!confirm('Restaurer la sauvegarde '+src+' du '+new Date(o.exportedAt).toLocaleString('fr-FR')+' ?\n\n'+n.km.length+' relevés, '+n.exp.length+' dépenses, '+n.rev.length+' recettes, '+n.fuel.length+' pleins, '+n.oil.length+' vidanges.\n\nLes données actuelles de cet appareil seront REMPLACÉES.'))return;
-  const gh=D.s.gh;D=merge(def(),n);D.s.gh=gh;save(true);if(fromGh){M.hash=hash(snapshot().data);M.dirty=false}else{M.dirty=true}saveM();render();toast('Données restaurées : statistiques recalculées')}
+const validV=d=>d&&d.s&&['km','exp','rev','fuel','oil'].every(k=>Array.isArray(d[k]))&&Array.isArray(d.s.ce)&&Array.isArray(d.s.cr);
+function validB(o){return o&&o.app=='motor-manager-pro'&&typeof o.version=='number'&&o.version<=3&&o.data&&(o.version>=3?Array.isArray(o.data.vehicles)&&o.data.vehicles.length>0&&o.data.vehicles.every(validV):validV(o.data))}
+function restore(o,src,fromGh){if(!validB(o))return toast('Sauvegarde invalide ou version non prise en charge',1);const vs=o.version>=3?o.data.vehicles:[o.data],c=k=>vs.reduce((a,v)=>a+v[k].length,0);
+  if(!confirm('Restaurer la sauvegarde '+src+' du '+new Date(o.exportedAt).toLocaleString('fr-FR')+' ?\n\n'+vs.length+' véhicule'+(vs.length>1?'s':'')+' : '+c('km')+' relevés, '+c('exp')+' dépenses, '+c('rev')+' recettes, '+c('fuel')+' pleins, '+c('oil')+' vidanges.\n\nLes données actuelles de cet appareil seront REMPLACÉES.'))return;
+  const list=vs.map(v=>{const d=merge(def(),v);d.id=v.id||uid();return d}),act=o.version>=3&&list.some(v=>v.id==o.data.act)?o.data.act:list[0].id;
+  DB={v:3,act,list,gh:DB.gh};D=list.find(v=>v.id==act);linkGh();SY=null;Object.keys(E).forEach(k=>E[k]=null);save(true);if(fromGh){M.hash=hash(snapshot().data);M.dirty=false}else{M.dirty=true}saveM();render();toast('Données restaurées : statistiques recalculées')}
 function jsonOut(){M.local=new Date().toISOString();saveM();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(snapshot(),null,1)],{type:'application/json'}));a.download='motor-manager-backup-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);if(V=='bak')render()}
 function jsonIn(i){const f=i.files[0];if(!f)return;f.text().then(t=>{try{restore(JSON.parse(t),f.name)}catch(e){toast('Fichier JSON illisible',1)}});i.value=''}
-function resetAll(){if(prompt('Cette action efface TOUTES les données locales. Tapez SUPPRIMER pour confirmer.')!=='SUPPRIMER')return;const gh=D.s.gh;D=def();D.s.gh=gh;save();render();toast('Données réinitialisées')}
+function resetAll(){if(prompt('Cette action efface TOUTES les données locales (tous les véhicules). Tapez SUPPRIMER pour confirmer.')!=='SUPPRIMER')return;const d=def();d.id=uid();DB={v:3,act:d.id,list:[d],gh:DB.gh};D=d;linkGh();SY=null;save();render();toast('Données réinitialisées')}
 VW.bak=()=>{const g=D.s.gh,t=tok(),fo=(v,l)=>`<option value="${v}" ${g.freq==v?'selected':''}>${l}</option>`;
-  return`<div class="card p-3 mb-3"><b>Sauvegarde locale (JSON)</b><p class="small text-muted">Dernier export : ${M.local?new Date(M.local).toLocaleString('fr-FR'):'jamais'}. Le jeton GitHub n'est jamais inclus.</p>
+  return`<div class="card p-3 mb-3"><b>Sauvegarde locale (JSON, tous les véhicules)</b><p class="small text-muted">Dernier export : ${M.local?new Date(M.local).toLocaleString('fr-FR'):'jamais'}. Le jeton GitHub n'est jamais inclus.</p>
   <div><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="jsonOut()"><i class="fa-solid fa-download"></i> Télécharger</button><label class="btn btn-outline-dark btn-sm me-1 mb-1"><i class="fa-solid fa-upload"></i> Restaurer un fichier<input type="file" accept=".json" hidden onchange="jsonIn(this)"></label><button class="btn btn-outline-danger btn-sm mb-1" onclick="resetAll()"><i class="fa-solid fa-trash"></i> Réinitialiser</button></div></div>
   <div class="card p-3 mb-3"><b><i class="fa-brands fa-github"></i> Sauvegarde GitHub</b><div id="ghst" class="my-2">${ghStatus()}</div>
   <div class="alert alert-warning small py-2">Le stockage du navigateur (LocalStorage) n'est pas chiffré : le jeton enregistré ici est accessible à toute personne ayant accès à ce navigateur. Une application sans serveur ne peut pas protéger un secret comme le ferait un serveur. Utilisez un dépôt <b>privé</b> et un jeton « fine-grained » limité à ce seul dépôt, avec la permission « Contents : Read and write ».</div>
@@ -344,7 +391,7 @@ function setSave(){const g=i=>$('#'+i).value,n=i=>num(g(i)),L=i=>[...new Set(g(i
   const p=n('s_price'),iv=n('s_ivl'),w=n('s_warn'),b=n('s_big'),rd=n('s_rd'),ce=L('s_ce'),cr=L('s_cr');
   if(!(p>0)||!(iv>0)||isNaN(w)||w<0||!(b>0)||isNaN(rd)||rd<0)return toast('Valeurs numériques invalides',1);if(!ce.length||!cr.length)return toast('Les listes de catégories ne peuvent pas être vides',1);
   const bud={};let bb=false;document.querySelectorAll('[data-bud]').forEach(i=>{const v=num(i.value);if(i.value.trim()!==''&&(isNaN(v)||v<0))bb=true;else if(v>0&&ce.includes(i.dataset.bud))bud[i.dataset.bud]=v});if(bb)return toast('Budget invalide',1);
-  Object.assign(D.s,{bud,veh:g('s_veh'),start:+g('s_start'),end:+g('s_end'),price:p,ivl:iv,warn:w,big:b,rd,cur:g('s_cur')||'DH',ce,cr});SY=null;save();toast('Paramètres enregistrés');render()}
+  Object.assign(D.s,{bud,veh:g('s_veh').trim()||'Mon véhicule',start:+g('s_start'),end:+g('s_end'),price:p,ivl:iv,warn:w,big:b,rd,cur:g('s_cur')||'DH',ce,cr});DB.list.forEach(v=>{v.s.rd=D.s.rd;v.s.cur=D.s.cur});SY=null;save();toast('Paramètres enregistrés');render()}
 
 /* ===== Sauvegarde GitHub (API Contents) ===== */
 const tok=()=>localStorage.getItem(KT)||'';
@@ -353,7 +400,7 @@ const dir=p=>p.includes('/')?p.slice(0,p.lastIndexOf('/')+1):'';
 const herr=s=>({401:'Jeton invalide ou expiré',403:'Accès refusé : vérifiez la permission « Contents : Read and write » du jeton ou la limite d\'API',404:'Dépôt, branche ou fichier introuvable (le jeton doit aussi couvrir ce dépôt)',409:'Conflit de version, réessayez',422:'Requête refusée (branche inexistante ou conflit)'}[s]||'Erreur GitHub ('+s+')');
 function ghCfg(v){const g=D.s.gh,x=i=>$('#'+i);if(!x('gh_owner'))return;g.owner=x('gh_owner').value.trim();g.repo=x('gh_repo').value.trim();g.branch=x('gh_branch').value.trim()||'main';g.path=x('gh_path').value.trim().replace(/^\/+/,'')||'backups/motor-manager-backup.json';g.freq=x('gh_freq').value;g.snap=x('gh_snap').checked;
   const t=x('gh_tok').value.trim();if(t){localStorage.setItem(KT,t);x('gh_tok').value='';}
-  localStorage.setItem(KEY,JSON.stringify(D));sched();if(v){toast('Configuration enregistrée');render()}}
+  localStorage.setItem(KEY,JSON.stringify(DB));sched();if(v){toast('Configuration enregistrée');render()}}
 function tokDel(){if(!confirm('Supprimer le jeton de ce navigateur ? (Pensez aussi à le révoquer sur GitHub.)'))return;localStorage.removeItem(KT);M.st='none';saveM();render();toast('Jeton supprimé')}
 async function api(path,o={}){const g=D.s.gh,t=tok();if(!g.owner||!g.repo||!t)throw new Error('Configuration GitHub incomplète (propriétaire, dépôt ou jeton manquant)');
   if(!navigator.onLine)throw new Error('Hors ligne : GitHub injoignable (vos données locales sont intactes)');
