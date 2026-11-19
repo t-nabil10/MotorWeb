@@ -66,11 +66,20 @@ function fstat(){const cs=cycles(),td=cs.reduce((s,c)=>s+c.dist,0),tl=cs.reduce(
   return{cs,remL:ts?ts.l:null,last:cs[cs.length-1],l100:td?tl/td*100:null,kml,cpk:td?tc/td:null,bought:D.fuel.reduce((s,f)=>s+f.liters,0),spend:sum(D.exp.filter(isF),ALL),lf:srt(D.fuel)[0],range:ts?ts.km:null}}
 /* Carburant restant : recalculé depuis le dernier plein complet (capacité) ou le point de départ saisi, puis diminue avec le compteur */
 const refKml=()=>D.s.l100ref>0?100/D.s.l100ref:null;
-function tankState(kml,ov){if(!kml)return null;const fs=fsort(),tk=D.s.tank,rm=D.s.remain,lo=lastOdo(),cur=ov!=null&&!isNaN(ov)&&ov>(lo??-1)?ov:lo;let base=null;
-  const lf=tk?[...fs].reverse().find(f=>f.full&&f.odo!=null):null;if(lf)base={l:tk,odo:lf.odo};
-  const m=rm&&typeof rm=='object'?rm:(typeof rm=='number'&&lo!=null?{l:rm,odo:lo}:null);if(m&&(!base||m.odo>base.odo))base={l:m.l,odo:m.odo};
+function tankState(kml,ov){if(!kml)return null;const tk=D.s.tank,rm=D.s.remain,lo=lastOdo(),cur=ov!=null&&!isNaN(ov)&&ov>(lo??-1)?ov:lo,
+  all=[...D.km,...D.fuel,...D.oil],odoAt=d=>{const a=all.filter(x=>x.odo!=null&&x.date<=d).map(x=>x.odo);return a.length?Math.max(...a):null},
+  fs=D.fuel.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ts&&b.ts?a.ts-b.ts:(a.odo??1e12)-(b.odo??1e12))),
+  fo=f=>f.odo!=null?f.odo:odoAt(f.date);let base=null,ev=[];
+  /* Point de départ = dernier plein complet (réservoir plein) ou dernier « carburant restant » saisi, le plus récent des deux.
+     Tous les pleins (même partiels, même sans compteur) saisis APRÈS ce point sont ajoutés, après déduction de la consommation depuis le point précédent. */
+  const li=tk?fs.map((f,i)=>f.full&&f.odo!=null?i:-1).filter(i=>i>=0).pop():-1;
+  if(li>=0){base={l:tk,odo:fs[li].odo,ts:fs[li].ts};ev=fs.slice(li+1)}
+  const m=rm&&typeof rm=='object'?rm:(typeof rm=='number'&&lo!=null?{l:rm,odo:lo}:null);
+  if(m){const md=m.date||(all.filter(x=>x.odo===m.odo).map(x=>x.date).sort().pop())||'';
+    if(!base||m.odo>base.odo||(m.odo==base.odo&&(m.ts&&base.ts?m.ts>base.ts:true))){base={l:m.l,odo:m.odo,ts:m.ts};
+      ev=fs.filter(f=>{if(f.ts&&m.ts)return f.ts>m.ts;const q=fo(f);if(!md)return q!=null&&q>m.odo;if(f.date!==md)return f.date>md;if(q!=null&&q!==m.odo)return q>m.odo;return true})}}
   if(!base)return null;let l=base.l,o=base.odo;
-  fs.filter(f=>f.odo!=null&&f.odo>base.odo).forEach(f=>{l=Math.max(0,l-(f.odo-o)/kml)+f.liters;if(tk)l=Math.min(l,tk);o=f.odo});
+  ev.forEach(f=>{const q=fo(f);if(q!=null&&q>o){l=Math.max(0,l-(q-o)/kml);o=q}l+=f.liters;if(tk)l=Math.min(l,tk)});
   if(cur!=null&&cur>o)l=Math.max(0,l-(cur-o)/kml);return{l,km:l*kml,cap:tk||Math.max(base.l,l)}}
 /* Jauge visuelle d'autonomie (se met à jour avec le compteur, même en cours de saisie) */
 function gauge(cur){const f=fstat(),ur=D.s.l100mode=='ref'&&refKml(),m=ur?null:f.kml,kml=ur?refKml():(f.kml||refKml()),ts=tankState(kml,cur),box=h=>`<div class="card p-3 mb-3"><b class="mb-2"><i class="fa-solid fa-gas-pump"></i> Autonomie</b>${h}</div>`;
@@ -194,7 +203,7 @@ function sub(k){const r={};
     if(l&&a)p=a/l;else if(a&&p)l=a/p;else if(l&&p)a=l*p;else return toast('Renseignez le prix du litre et le montant payé',1);
     if(r.full&&r.odo==null)return toast('Le compteur est requis pour un plein complet',1);Object.assign(r,{liters:l,amt:a,ppl:p})}
   if(k=='oil')r.ivl=r.ivl||D.s.ivl;
-  r.id=E[k]||uid();const arr=D[k],i=arr.findIndex(x=>x.id==r.id);i<0?arr.push(r):arr[i]=r;
+  r.id=E[k]||uid();const arr=D[k],i=arr.findIndex(x=>x.id==r.id);r.ts=(i>=0&&arr[i].ts)||Date.now();i<0?arr.push(r):arr[i]=r;
   if(k=='fuel'||k=='oil'){D.exp=D.exp.filter(x=>x.fid!=r.id);if(r.amt)D.exp.push({id:'e'+r.id,fid:r.id,date:r.date,cat:k=='fuel'?'Carburant':'Vidange',desc:k=='fuel'?'Plein '+(r.full?'complet':'partiel'):'Vidange'+(r.type?' — '+r.type:''),amt:r.amt,note:''})}
   E[k]=null;save();render();toast('Enregistré')}
 function edit(k,id){E[k]=id;render();scrollTo(0,0)}
@@ -222,7 +231,7 @@ function pre(k){
 const saveRem=()=>{const r=$('#rem').value.trim(),t=$('#tank').value.trim(),q=$('#l100').value.trim(),rv=r===''?null:num(r),tv=t===''?null:num(t),qv=q===''?null:num(q);
   if((rv!=null&&(isNaN(rv)||rv<0))||(tv!=null&&(isNaN(tv)||tv<=0))||(qv!=null&&(isNaN(qv)||qv<=0)))return toast('Valeur invalide',1);
   const md=$('#l100mode').value;if(md=='ref'&&qv==null)return toast('Renseignez la consommation de référence pour l\'utiliser',1);
-  if(rv!=null){const o=lastOdo();if(o==null)return toast('Enregistrez d\'abord un compteur',1);D.s.remain={l:rv,odo:o}}D.s.tank=tv;D.s.l100ref=qv;D.s.l100mode=md;save();render();toast('Mise à jour effectuée : autonomie recalculée')};
+  if(rv!=null){const o=lastOdo();if(o==null)return toast('Enregistrez d\'abord un compteur',1);D.s.remain={l:rv,odo:o,date:today(),ts:Date.now()}}D.s.tank=tv;D.s.l100ref=qv;D.s.l100mode=md;save();render();toast('Mise à jour effectuée : autonomie recalculée')};
 function page(k){const f=F[k]||(F[k]={q:'',cat:'',from:'',to:'',sort:'d'}),rec=E[k]?D[k].find(x=>x.id==E[k]):null,cats=k=='exp'?D.s.ce:k=='rev'?D.s.cr:null,cols=COL[k],T_={exp:'dépense',rev:'recette',km:'relevé',fuel:'plein',oil:'vidange'}[k];
   let rows=(k=='km'?kmRows():D[k]).filter(r=>(!f.from||r.date>=f.from)&&(!f.to||r.date<=f.to)&&(!f.cat||r.cat==f.cat)&&(!f.q||JSON.stringify(r).toLowerCase().includes(f.q.toLowerCase())));
   rows=f.sort=='m'?rows.slice().sort((a,b)=>(b.amt||b.dist||0)-(a.amt||a.dist||0)):srt(rows,f.sort=='a');
