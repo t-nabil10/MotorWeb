@@ -2,9 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Motor Manager Pro</title>
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#14213d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,17 +22,29 @@
   <div class="brand"><i class="fa-solid fa-gauge-high"></i><div>Motor Manager<small>PRO</small></div></div>
   <nav id="nav"></nav>
 </aside>
+<div id="scrim" onclick="document.getElementById('side').classList.remove('open')"></div>
 <div id="wrap">
   <header>
-    <button id="burger" class="btn btn-light" onclick="document.getElementById('side').classList.toggle('open')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
     <h1 id="ttl"></h1>
   </header>
   <main id="main"></main>
 </div>
+<nav id="bnav" aria-label="Navigation principale"></nav>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+/* Filet de sécurité : si l'application ne démarre pas (cache obsolète, bibliothèque bloquée…), afficher l'erreur et proposer la réparation */
+function mmpRepair(){var base=new URL('./',location.href).href,p=[];
+  if(navigator.serviceWorker)p.push(navigator.serviceWorker.getRegistrations().then(function(r){return Promise.all(r.filter(function(x){return x.scope===base}).map(function(x){return x.unregister()}))}));
+  if(window.caches)p.push(caches.keys().then(function(k){return Promise.all(k.filter(function(n){return n.indexOf('mmp-')===0}).map(function(n){return caches.delete(n)}))}));
+  Promise.all(p).then(function(){location.reload()},function(){location.reload()})}
+window.addEventListener('error',function(e){var m=document.getElementById('main');if(!m||m.children.length)return;
+  m.innerHTML='';var d=document.createElement('div');d.style.cssText='padding:24px;max-width:560px';
+  var h=document.createElement('h3');h.textContent='L\u2019application n\u2019a pas pu d\u00e9marrer';var t=document.createElement('p');t.textContent=(e.message||'Erreur inconnue')+(e.lineno?' (ligne '+e.lineno+')':'');
+  var b=document.createElement('button');b.className='btn btn-warning';b.textContent='R\u00e9parer (vider le cache) et recharger';b.onclick=mmpRepair;d.appendChild(h);d.appendChild(t);d.appendChild(b);m.appendChild(d)});
+</script>
 <script src="app.js"></script>
 </body>
 </html>
