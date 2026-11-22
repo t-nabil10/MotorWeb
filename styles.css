@@ -69,3 +69,10 @@ textarea.form-control{font-size:.9rem}
 
 #vsel{margin-left:auto;width:auto;max-width:210px;font-weight:600}
 @media(max-width:575px){#vsel{max-width:150px}}
+
+/* Notice de nouvelle version */
+#upd{position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:70;display:flex;align-items:center;gap:10px;background:var(--navy);color:#fff;padding:12px 14px;border-radius:12px;box-shadow:0 6px 20px rgba(20,33,61,.35)}
+#upd span{flex:1;font-size:.9rem}
+#upd button{border:0;border-radius:8px;padding:6px 12px;font-weight:700}
+#upd #upd_go{background:var(--acc);color:var(--navy)}
+#upd #upd_x{background:transparent;color:#cbd3e6;padding:6px 8px}

@@ -2,7 +2,7 @@
    Fichiers de l'app : réseau d'abord (mises à jour immédiates), cache en secours hors ligne.
    Bibliothèques CDN : cache d'abord. Ne touche qu'à ses propres caches (préfixe « mmp- »),
    pour ne jamais effacer ceux d'une autre application hébergée sur la même adresse. */
-const PREFIX = 'mmp-', CACHE = 'mmp-v9';
+const PREFIX = 'mmp-', CACHE = 'mmp-v10';
 const LOCAL = ['./', './index.html', './styles.css', './app.js', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-192.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 const LIBS = ['https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];
 const own = (req, opt) => caches.open(CACHE).then(c => c.match(req, opt));

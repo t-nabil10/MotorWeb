@@ -2,16 +2,16 @@
 /* ===== MOTOR MANAGER PRO v2 — données & utilitaires ===== */
 const KEY='mmp_v3',K2='mmp_v2',KT='mmp_gh_token',KM='mmp_meta',MN=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const def=()=>({v:2,s:{veh:'Mon véhicule',start:9,end:6,price:15.2,ivl:5000,warn:500,big:500,cur:'DH',rd:14,bud:{},remain:null,tank:null,l100ref:null,l100mode:'auto',ce:['Carburant','Parking','Entretien','Vidange','Assurance','Autres'],cr:['Cours','Parking','Autres'],gh:{owner:'',repo:'',branch:'main',path:'backups/motor-manager-backup.json',freq:'manual',snap:false}},km:[],exp:[],rev:[],fuel:[],oil:[],rem:[]});
-function merge(d,x){const gh=Object.assign(def().s.gh,x.s&&x.s.gh);Object.assign(d.s,x.s);d.s.gh=gh;['km','exp','rev','fuel','oil','rem'].forEach(k=>d[k]=Array.isArray(x[k])?x[k]:[]);return d}
+function merge(d,x){const gh=Object.assign(def().s.gh,x.s&&x.s.gh);Object.assign(d.s,x.s);d.s.gh=gh;['km','exp','rev','fuel','oil','rem'].forEach(k=>d[k]=Array.isArray(x[k])?x[k]:[]);d.smt=x.smt;d.smh=x.smh;d.kn=x.kn;d.dels=Array.isArray(x.dels)?x.dels:[];return d}
 function load1(){try{let x=JSON.parse(localStorage.getItem(K2));if(!x){const o=JSON.parse(localStorage.getItem('mmp_v1'));if(o&&o.s){const sd={};o.km.forEach(r=>{if(!sd[r.date]||r.odo>sd[r.date].odo)sd[r.date]=r});x={s:{veh:o.s.veh,start:o.s.start,end:o.s.end,price:o.s.price,cur:o.s.cur,ce:o.s.ce,cr:o.s.cr},km:Object.values(sd).map(r=>({id:r.id,date:r.date,odo:r.odo})),exp:o.exp,rev:o.rev,fuel:o.fuel.map(f=>({...f,full:true})),oil:[]}}}if(x&&x.s)return merge(def(),x)}catch(e){}return def()}
 const nid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-function loadDB(){try{const x=JSON.parse(localStorage.getItem(KEY));if(x&&Array.isArray(x.list)&&x.list.length){const list=x.list.map(v=>{const d=merge(def(),v);d.id=v.id||nid();return d});return{v:3,act:list.some(v=>v.id==x.act)?x.act:list[0].id,list,gh:Object.assign(def().s.gh,x.gh)}}}catch(e){}
-  const d=load1();d.id=nid();return{v:3,act:d.id,list:[d],gh:d.s.gh}}
+function loadDB(){try{const x=JSON.parse(localStorage.getItem(KEY));if(x&&Array.isArray(x.list)&&x.list.length){const list=x.list.map(v=>{const d=merge(def(),v);d.id=v.id||nid();return d});return{v:3,act:list.some(v=>v.id==x.act)?x.act:list[0].id,list,gh:Object.assign(def().s.gh,x.gh),vdel:Array.isArray(x.vdel)?x.vdel:[]}}}catch(e){}
+  const d=load1();d.id=nid();return{v:3,act:d.id,list:[d],gh:d.s.gh,vdel:[]}}
 let DB=loadDB(),D=DB.list.find(v=>v.id==DB.act)||DB.list[0],V='sai',AF=null;
 const linkGh=()=>DB.list.forEach(v=>v.s.gh=DB.gh);linkGh();const F={},E={},CH={},P={type:'saison',from:'',to:''};
 let M=Object.assign({st:'none',last:null,size:null,err:'',hash:null,local:null,dirty:false},(()=>{try{return JSON.parse(localStorage.getItem(KM))||{}}catch(e){return{}}})());
 const saveM=()=>localStorage.setItem(KM,JSON.stringify(M));
-const save=nd=>{localStorage.setItem(KEY,JSON.stringify(DB));if(!nd){M.dirty=true;saveM();sched()}};
+const save=nd=>{DB.list.forEach(v=>stampV(v));localStorage.setItem(KEY,JSON.stringify(DB));if(!nd){M.dirty=true;saveM();sched()}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const $=s=>document.querySelector(s);
 const nf=new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -283,11 +283,11 @@ function vchg(id){if(id=='__new')return addVeh();switchVeh(id)}
 function switchVeh(id,quiet){const v=DB.list.find(x=>x.id==id);if(!v)return;DB.act=id;D=v;SY=null;Object.keys(E).forEach(k=>E[k]=null);Object.keys(F).forEach(k=>delete F[k]);
   X.odo=null;X.xl=[{cat:'',desc:'',amt:''}];X.rl=[{cat:'',desc:'',amt:''}];save(1);render();if(!quiet)toast('Véhicule actif : '+v.s.veh)}
 function addVeh(n){if(n===undefined)n=prompt('Nom du nouveau véhicule :','');n=(n||'').trim();if(!n){render();return}
-  const d=def();Object.assign(d.s,JSON.parse(JSON.stringify(D.s)),{veh:n,remain:null,tank:null,l100ref:null});d.id=uid();DB.list.push(d);linkGh();switchVeh(d.id,1);toast('Véhicule « '+n+' » ajouté (réglages copiés depuis le précédent, données vides)')}
+  const d=def();Object.assign(d.s,JSON.parse(JSON.stringify(D.s)),{veh:n,remain:null,tank:null,l100ref:null});d.id=uid();stampV(d);d.smt=Date.now();DB.list.push(d);linkGh();switchVeh(d.id,1);toast('Véhicule « '+n+' » ajouté (réglages copiés depuis le précédent, données vides)')}
 function delVeh(id){if(DB.list.length<2)return toast('Impossible de supprimer le seul véhicule',1);const v=DB.list.find(x=>x.id==id);if(!v)return;
   if((prompt('Supprimer « '+v.s.veh+' » et toutes ses données ('+v.km.length+' relevés, '+v.exp.length+' dépenses, '+v.rev.length+' recettes) ?\nTapez SUPPRIMER pour confirmer.')||'')!=='SUPPRIMER')return;
-  const i=DB.list.indexOf(v);DB.list.splice(i,1);if(DB.act==id)switchVeh(DB.list[0].id,1);else{save();render()}
-  toast('Véhicule supprimé',0,{l:'Annuler',f:()=>{DB.list.splice(Math.min(i,DB.list.length),0,v);save();render();toast('Véhicule restauré')}})}
+  const i=DB.list.indexOf(v);DB.list.splice(i,1);DB.vdel=(DB.vdel||[]).concat({id:v.id,t:Date.now()});if(DB.act==id)switchVeh(DB.list[0].id,1);else{save();render()}
+  toast('Véhicule supprimé',0,{l:'Annuler',f:()=>{DB.list.splice(Math.min(i,DB.list.length),0,v);DB.vdel=(DB.vdel||[]).filter(x=>x.id!=v.id);v.smt=Date.now();save();render();toast('Véhicule restauré')}})}
 function withVeh(v,f){const o=D,s0=SY;D=v;SY=null;try{return f()}finally{D=o;SY=s0}}
 function fleet(){return DB.list.map(v=>withVeh(v,()=>{const t=T(SR()),cs=costStat();return{id:v.id,name:v.s.veh,km:t.km,v:t.v,e:t.e,net:t.net,cpk:cs.cpk,late:(D.rem||[]).filter(q=>remStat(q).rank==0).length,soon:(D.rem||[]).filter(q=>remStat(q).rank==1).length}}))}
 VW.veh=()=>{const rows=fleet(),sum=k=>rows.reduce((s,x)=>s+x[k],0);
@@ -368,9 +368,9 @@ VW.rep=()=>{const b=(f,l,i)=>`<button class="btn btn-outline-dark btn-sm me-1 mb
   <hr class="my-3"><b><i class="fa-brands fa-whatsapp"></i> Partager sur WhatsApp</b><p class="small text-muted mt-1">Sur téléphone, le menu de partage s'ouvre avec le PDF joint : choisissez WhatsApp. Sinon le PDF est téléchargé et WhatsApp s'ouvre avec le résumé : joignez simplement le fichier.</p>${b("pdfShare('mois')",'PDF mensuel','share-nodes')}${b("pdfShare('saison')",'PDF saisonnier','share-nodes')}${b("waText('mois')",'Résumé mensuel (texte)','comment')}${b("waText('saison')",'Résumé saisonnier (texte)','comment')}</div></div></div>`};
 
 /* ===== Sauvegarde locale JSON ===== */
-const APP_VER='2026.11.22';
+const APP_VER='2026.11.22.3';
 /* Un seul véhicule : format v2, lisible par TOUTES les versions de l'app. Plusieurs véhicules : format v3 (versions récentes uniquement). */
-const snapshot=()=>{const vs=DB.list.map(v=>{const d=JSON.parse(JSON.stringify(v));delete d.s.gh;return d}),b={app:'motor-manager-pro',exportedAt:new Date().toISOString(),appVersion:APP_VER};return vs.length==1?{...b,version:2,data:vs[0]}:{...b,version:3,data:{act:DB.act,vehicles:vs}}};
+const snapshot=()=>{const vs=DB.list.map(v=>{const d=JSON.parse(JSON.stringify(v));delete d.s.gh;delete d.kn;return d}),b={app:'motor-manager-pro',exportedAt:new Date().toISOString(),appVersion:APP_VER,vdel:DB.vdel||[]};return vs.length==1?{...b,version:2,data:vs[0]}:{...b,version:3,data:{act:DB.act,vehicles:vs}}};
 const hash=o=>{const s=JSON.stringify(o);let h=5381;for(let i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return h+':'+s.length};
 const validV=d=>d&&d.s&&['km','exp','rev','fuel','oil'].every(k=>Array.isArray(d[k]))&&Array.isArray(d.s.ce)&&Array.isArray(d.s.cr);
 const badB=o=>o&&o.app=='motor-manager-pro'&&o.version>3?'Cette sauvegarde vient d\'une version plus récente de l\'application : mettez cet appareil à jour (Sauvegarde › Mettre à jour l\'application) puis réessayez':'Sauvegarde invalide ou version non prise en charge';
@@ -378,20 +378,20 @@ function validB(o){return o&&o.app=='motor-manager-pro'&&typeof o.version=='numb
 function restore(o,src,fromGh){if(!validB(o))return toast(badB(o),1);const vs=o.version>=3?o.data.vehicles:[o.data],c=k=>vs.reduce((a,v)=>a+v[k].length,0);
   if(!confirm('Restaurer la sauvegarde '+src+' du '+new Date(o.exportedAt).toLocaleString('fr-FR')+' ?\n\n'+vs.length+' véhicule'+(vs.length>1?'s':'')+' : '+c('km')+' relevés, '+c('exp')+' dépenses, '+c('rev')+' recettes, '+c('fuel')+' pleins, '+c('oil')+' vidanges.\n\nLes données actuelles de cet appareil seront REMPLACÉES.'))return;
   const list=vs.map(v=>{const d=merge(def(),v);d.id=v.id||uid();return d}),act=o.version>=3&&list.some(v=>v.id==o.data.act)?o.data.act:list[0].id;
-  DB={v:3,act,list,gh:DB.gh};D=list.find(v=>v.id==act);linkGh();SY=null;Object.keys(E).forEach(k=>E[k]=null);save(true);if(fromGh){M.hash=hash(snapshot().data);M.dirty=false}else{M.dirty=true}saveM();render();toast('Données restaurées : statistiques recalculées')}
+  DB={v:3,act,list,gh:DB.gh,vdel:Array.isArray(o.vdel)?o.vdel:[]};D=list.find(v=>v.id==act);linkGh();DB.list.forEach(v=>stampV(v));SY=null;Object.keys(E).forEach(k=>E[k]=null);save(true);if(fromGh){M.hash=hash(snapshot().data);M.dirty=false}else{M.dirty=true}saveM();render();toast('Données restaurées : statistiques recalculées')}
 function jsonOut(){M.local=new Date().toISOString();saveM();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(snapshot(),null,1)],{type:'application/json'}));a.download='motor-manager-backup-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);if(V=='bak')render()}
 function jsonIn(i){const f=i.files[0];if(!f)return;f.text().then(t=>{try{restore(JSON.parse(t),f.name)}catch(e){toast('Fichier JSON illisible',1)}});i.value=''}
-function resetAll(){if(prompt('Cette action efface TOUTES les données locales (tous les véhicules). Tapez SUPPRIMER pour confirmer.')!=='SUPPRIMER')return;const d=def();d.id=uid();DB={v:3,act:d.id,list:[d],gh:DB.gh};D=d;linkGh();SY=null;save();render();toast('Données réinitialisées')}
-VW.bak=()=>{const g=D.s.gh,t=tok(),fo=(v,l)=>`<option value="${v}" ${g.freq==v?'selected':''}>${l}</option>`;
-  return`<div class="card p-3 mb-3"><b>Sauvegarde locale (JSON, tous les véhicules)</b><p class="small text-muted">Dernier export : ${M.local?new Date(M.local).toLocaleString('fr-FR'):'jamais'}. Le jeton GitHub n'est jamais inclus.<br>Version de l'application : <b>${APP_VER}</b> · format de sauvegarde ${DB.list.length>1?'v3 (plusieurs véhicules : les anciennes versions ne peuvent pas la lire)':'v2 (lisible par toutes les versions)'}.</p>
+function resetAll(){if(prompt('Cette action efface TOUTES les données locales (tous les véhicules). Tapez SUPPRIMER pour confirmer.')!=='SUPPRIMER')return;const d=def();d.id=uid();stampV(d);DB={v:3,act:d.id,list:[d],gh:DB.gh,vdel:DB.vdel||[]};D=d;linkGh();SY=null;save();render();toast('Données réinitialisées')}
+VW.bak=()=>{AF=storageInfo;const g=D.s.gh,t=tok(),fo=(v,l)=>`<option value="${v}" ${g.freq==v?'selected':''}>${l}</option>`;
+  return`<div class="card p-3 mb-3"><b>Sauvegarde locale (JSON, tous les véhicules)</b><p class="small text-muted">Dernier export : ${M.local?new Date(M.local).toLocaleString('fr-FR'):'jamais'}. Le jeton GitHub n'est jamais inclus.<br>Version de l'application : <b>${APP_VER}</b> · format de sauvegarde ${DB.list.length>1?'v3 (plusieurs véhicules : les anciennes versions ne peuvent pas la lire)':'v2 (lisible par toutes les versions)'}.</p><div id="stinfo" class="small mb-2"></div>
   <div><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="jsonOut()"><i class="fa-solid fa-download"></i> Télécharger</button><label class="btn btn-outline-dark btn-sm me-1 mb-1"><i class="fa-solid fa-upload"></i> Restaurer un fichier<input type="file" accept=".json" hidden onchange="jsonIn(this)"></label><button class="btn btn-outline-secondary btn-sm me-1 mb-1" onclick="mmpRepair()" title="Vide le cache de l'application (pas vos données) et recharge la dernière version"><i class="fa-solid fa-arrows-rotate"></i> Mettre à jour l'application</button><button class="btn btn-outline-danger btn-sm mb-1" onclick="resetAll()"><i class="fa-solid fa-trash"></i> Réinitialiser</button></div></div>
-  <div class="card p-3 mb-3"><b><i class="fa-brands fa-github"></i> Sauvegarde GitHub</b><div id="ghst" class="my-2">${ghStatus()}</div>
+  <div class="card p-3 mb-3"><b><i class="fa-brands fa-github"></i> Sauvegarde et synchronisation GitHub</b><div class="alert alert-info small my-2">Pour synchroniser plusieurs téléphones : mêmes propriétaire, dépôt (privé), branche, fichier et jeton sur chaque appareil, avec le mode « Synchronisation automatique ». La synchronisation a lieu à l'ouverture de l'app, quand on y revient, et après chaque modification. Les données sont <b>fusionnées enregistrement par enregistrement</b> : la modification la plus récente gagne et les suppressions sont propagées. « Remplacer mes données par GitHub » écrase au contraire les données de cet appareil.</div><div id="ghst" class="my-2">${ghStatus()}</div>
   <div class="alert alert-warning small py-2">Le stockage du navigateur (LocalStorage) n'est pas chiffré : le jeton enregistré ici est accessible à toute personne ayant accès à ce navigateur. Une application sans serveur ne peut pas protéger un secret comme le ferait un serveur. Utilisez un dépôt <b>privé</b> et un jeton « fine-grained » limité à ce seul dépôt, avec la permission « Contents : Read and write ».</div>
   <div class="row g-2">${inp('gh_owner','Utilisateur / propriétaire',g.owner)}${inp('gh_repo','Nom du dépôt',g.repo)}${inp('gh_branch','Branche',g.branch)}${inp('gh_path','Chemin du fichier',g.path)}
-  <div class="col-md-3 col-6"><label class="form-label small">Sauvegarde automatique</label><select class="form-select" id="gh_freq">${fo('manual','Manuelle uniquement')}${fo('change','Après modifications (anti-rebond 30 s)')}${fo('daily','Quotidienne')}${fo('weekly','Hebdomadaire')}</select></div>
+  <div class="col-md-3 col-6"><label class="form-label small">Sauvegarde automatique</label><select class="form-select" id="gh_freq">${fo('sync','Synchronisation automatique (multi-appareils)')}${fo('manual','Manuelle uniquement')}${fo('change','Après modifications (anti-rebond 30 s)')}${fo('daily','Quotidienne')}${fo('weekly','Hebdomadaire')}</select></div>
   <div class="col-md-3 col-6 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" id="gh_snap" ${g.snap?'checked':''}><label class="form-check-label small" for="gh_snap">Conserver des instantanés datés (history/)</label></div></div>
   <div class="col-md-6"><label class="form-label small">Jeton d'accès personnel — actuel : <b>${t?'••••••••••••'+esc(t.slice(-4)):'aucun'}</b></label><input class="form-control" id="gh_tok" type="password" autocomplete="off" placeholder="Coller un jeton pour enregistrer ou remplacer"></div></div>
-  <div class="mt-3"><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="ghCfg(true)">Enregistrer la configuration</button><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="ghTest()"><i class="fa-solid fa-plug"></i> Tester la connexion</button><button class="btn btn-acc btn-sm me-1 mb-1" onclick="ghCfg();ghPush(true)"><i class="fa-solid fa-cloud-arrow-up"></i> Sauvegarder maintenant</button><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="ghCfg();ghRestore()"><i class="fa-solid fa-cloud-arrow-down"></i> Restaurer depuis GitHub</button><button class="btn btn-outline-danger btn-sm mb-1" onclick="tokDel()">Supprimer le jeton</button></div>
+  <div class="mt-3"><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="ghCfg(true)">Enregistrer la configuration</button><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="ghTest()"><i class="fa-solid fa-plug"></i> Tester la connexion</button><button class="btn btn-acc btn-sm me-1 mb-1" onclick="ghCfg();ghPush(true)"><i class="fa-solid fa-rotate"></i> Synchroniser maintenant</button><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="ghCfg();ghRestore()"><i class="fa-solid fa-cloud-arrow-down"></i> Remplacer mes données par GitHub</button><button class="btn btn-outline-danger btn-sm mb-1" onclick="tokDel()">Supprimer le jeton</button></div>
   <div class="small text-muted mt-2">Pour révoquer le jeton côté GitHub : Settings › Developer settings › Personal access tokens. L'application reste utilisable sans GitHub ; les données restent d'abord dans ce navigateur.</div></div>`};
 
 /* ===== Paramètres ===== */
@@ -426,16 +426,91 @@ async function ghTest(){ghCfg();stat('pending');try{const r=await api('');if(!r.
 async function put(path,txt,msg){for(let i=0;i<2;i++){const g=D.s.gh;let sha;const r=await api(path,{q:'?ref='+encodeURIComponent(g.branch)});if(r.ok)sha=(await r.json()).sha;else if(r.status!=404)throw new Error(herr(r.status));
   const p=await api(path,{m:'PUT',b:{message:msg,content:b64(txt),branch:g.branch,sha}});if(p.ok)return;if((p.status==409||p.status==422)&&i==0)continue;throw new Error(herr(p.status))}}
 let busy=false,tm=null;
-async function ghPush(manual){if(busy)return;const s=snapshot(),h=hash(s.data);
-  if(h==M.hash){if(manual)toast('Aucun changement depuis la dernière sauvegarde GitHub');return}
-  busy=true;stat('pending');
-  try{const txt=JSON.stringify(s,null,1);await put(D.s.gh.path,txt,'Sauvegarde Motor Manager Pro '+s.exportedAt);
-    if(D.s.gh.snap)await put(dir(D.s.gh.path)+'history/backup-'+today()+'.json',txt,'Instantané '+today());
-    M.hash=h;M.last=s.exportedAt;M.size=new Blob([txt]).size;M.dirty=false;stat('ok','');if(manual)toast('Sauvegarde GitHub réussie')}
-  catch(e){stat('fail',e.message);if(manual)toast(e.message,1)}busy=false}
-function sched(){if(D.s.gh.freq!='change'||!tok())return;clearTimeout(tm);M.dirty=true;tm=setTimeout(()=>ghPush(false),30000)}
+function ghPush(manual){return ghSync(manual)}
+function sched(){const f=D.s.gh.freq;if((f!='change'&&f!='sync')||!tok())return;clearTimeout(tm);M.dirty=true;tm=setTimeout(()=>ghSync(false),f=='sync'?8000:30000)}
 function periodic(){const g=D.s.gh;if(!tok()||!M.dirty||busy)return;const age=M.last?(Date.now()-new Date(M.last))/864e5:Infinity;if((g.freq=='daily'&&age>=1)||(g.freq=='weekly'&&age>=7))ghPush(false)}
 async function ghRestore(){try{const r=await api(D.s.gh.path,{q:'?ref='+encodeURIComponent(D.s.gh.branch),raw:1});if(!r.ok)throw new Error(herr(r.status));let o;try{o=JSON.parse(await r.text())}catch(e){throw new Error('Fichier de sauvegarde illisible')}if(!validB(o))throw new Error(badB(o));restore(o,'GitHub',true)}catch(e){toast(e.message,1)}}
+
+/* ===== Synchronisation multi-appareils : fusion enregistrement par enregistrement =====
+   Chaque enregistrement porte « mt » (date de dernière modification) et « mh » (empreinte de son contenu) ; chaque véhicule garde une liste
+   de suppressions (« dels ») et une copie des identifiants connus (« kn », locale). Fusion : la modification la plus récente gagne,
+   une suppression gagne sauf si l'enregistrement a été modifié après elle, à égalité c'est la version GitHub qui l'emporte. */
+const RK=['km','exp','rev','fuel','oil','rem'],DAY=864e5,bid=(a,b)=>String(a.id)<String(b.id)?-1:1;
+const canon=o=>Array.isArray(o)?(o.every(x=>x&&typeof x=='object'&&x.id!=null)?o.slice().sort((a,b)=>((a.k||'')+String(a.id)<(b.k||'')+String(b.id)?-1:1)):o).map(canon):o&&typeof o=='object'?Object.keys(o).sort().reduce((r,k)=>{if(k!='kn')r[k]=canon(o[k]);return r},{}):o;
+const H=o=>hash(canon(o));
+const rc=r=>{const{mt,mh,...c}=r;return c};
+function stampV(v){const now=Date.now(),first=!v.kn;v.kn=v.kn||{};v.dels=Array.isArray(v.dels)?v.dels:[];
+  RK.forEach(k=>{if(!Array.isArray(v[k]))v[k]=[];const old=new Set(v.kn[k]||[]),cur=new Set();
+    v[k].forEach(r=>{cur.add(r.id);const h=H(rc(r));
+      if(r.mh==null){r.mh=h;r.mt=(first||old.has(r.id))?(r.mt||r.ts||1):now}   /* ancien enregistrement : date d'origine ; nouveau : maintenant */
+      else if(r.mh!==h){r.mh=h;r.mt=now}});                                      /* contenu modifié */
+    if(!first)old.forEach(id=>{if(!cur.has(id)&&!v.dels.some(d=>d.k==k&&d.id==id))v.dels.push({k,id,t:now})});  /* suppression détectée */
+    v.kn[k]=[...cur]});
+  const sh=H((({gh,...s})=>s)(v.s));
+  if(v.smh==null){v.smh=sh;v.smt=v.smt||1}else if(v.smh!==sh){v.smh=sh;v.smt=now}
+  v.dels=v.dels.filter(d=>{const r=v[d.k]&&v[d.k].find(x=>x.id==d.id);if(r){r.mt=now;return false}return now-d.t<90*DAY});   /* annulation d'une suppression */
+  return v}
+const pristine=v=>RK.every(k=>!(v[k]||[]).length)&&(v.smt||1)<=1&&!(v.dels||[]).length;
+function mergeVeh(a,b){const now=Date.now(),v=Object.assign({},a),useB=(b.smt||1)>=(a.smt||1);
+  v.s=Object.assign({},useB?b.s:a.s,{gh:a.s.gh});v.smt=useB?b.smt:a.smt;v.smh=useB?b.smh:a.smh;
+  const dm=new Map();[...(a.dels||[]),...(b.dels||[])].forEach(d=>{const x=d.k+'|'+d.id,o=dm.get(x);if(!o||d.t>o.t)dm.set(x,d)});
+  RK.forEach(k=>{const m=new Map();(a[k]||[]).forEach(r=>m.set(r.id,r));(b[k]||[]).forEach(r=>{const o=m.get(r.id);if(!o||(r.mt||1)>=(o.mt||1))m.set(r.id,r)});
+    v[k]=[...m.values()].filter(r=>{const d=dm.get(k+'|'+r.id);return!(d&&d.t>=(r.mt||1))}).sort(bid)});
+  v.dels=[...dm.values()].filter(d=>!v[d.k].some(r=>r.id==d.id)&&now-d.t<90*DAY).sort(bid);
+  v.kn={};RK.forEach(k=>v.kn[k]=v[k].map(r=>r.id));return v}
+function mergeDB(L,R){const now=Date.now(),vd=new Map();[...(L.vdel||[]),...(R.vdel||[])].forEach(d=>{const o=vd.get(d.id);if(!o||d.t>o.t)vd.set(d.id,d)});
+  const rm=new Map(R.list.map(v=>[v.id,v])),list=L.list.map(a=>rm.has(a.id)?mergeVeh(a,rm.get(a.id)):a);
+  R.list.forEach(b=>{if(!L.list.some(a=>a.id==b.id))list.push(b)});
+  let out=list.filter(v=>{const d=vd.get(v.id);return!(d&&d.t>=(v.smt||1))});if(!out.length)out=list.slice(0,1);
+  return{list:out,vdel:[...vd.values()].filter(d=>!out.some(v=>v.id==d.id)&&now-d.t<90*DAY).sort(bid)}}
+/* Deux téléphones restaurés l'un depuis l'autre ont les mêmes enregistrements mais des identifiants de véhicule différents : on les reconnaît comme le même véhicule */
+function adoptIds(vs){DB.list.forEach(a=>{if(vs.some(r=>r.id==a.id))return;const ids=new Set();RK.forEach(k=>a[k].forEach(r=>ids.add(k+r.id)));let best=null,bs=0;
+  vs.forEach(r=>{if(DB.list.some(x=>x.id==r.id))return;let c=0,n=0;RK.forEach(k=>r[k].forEach(x=>{n++;if(ids.has(k+x.id))c++}));const sc=Math.min(ids.size,n)?c/Math.min(ids.size,n):0;if(c>0&&sc>=.5&&sc>bs){best=r;bs=sc}});
+  if(best){if(DB.act==a.id)DB.act=best.id;a.id=best.id}})}
+function applyRemote(o){const vs=(o.version>=3?o.data.vehicles:[o.data]).map(x=>{const d=merge(def(),x);d.id=x.id||null;return d});
+  vs.forEach(v=>{if(!v.id){const m=DB.list.find(a=>a.s.veh==v.s.veh)||DB.list[0];v.id=m.id}});   /* sauvegarde d'une ancienne version : pas d'identifiant */
+  adoptIds(vs);
+  vs.forEach(v=>stampV(v));
+  const keep=DB.list.filter(v=>!(pristine(v)&&!vs.some(r=>r.id==v.id))),m=mergeDB({list:keep,vdel:DB.vdel||[]},{list:vs,vdel:o.vdel||[]});   /* un véhicule vierge (installation neuve) est remplacé */
+  DB.list=m.list;DB.vdel=m.vdel;if(!DB.list.some(v=>v.id==DB.act))DB.act=DB.list[0].id;D=DB.list.find(v=>v.id==DB.act);linkGh()}
+DB.list.forEach(v=>stampV(v));
+
+async function ghSync(manual){if(busy)return;const g=D.s.gh;if(!tok()||!g.owner||!g.repo){if(manual)toast('Configuration GitHub incomplète (propriétaire, dépôt ou jeton)',1);return}
+  busy=true;M.lastSync=Date.now();stat('pending');let got=false;
+  try{const q='?ref='+encodeURIComponent(g.branch);
+    for(let i=0;i<3;i++){
+      const mr=await api(g.path,{q});let sha,rem=null;
+      if(mr.ok){sha=(await mr.json()).sha;const rr=await api(g.path,{q,raw:1});if(!rr.ok)throw new Error(herr(rr.status));let o;try{o=JSON.parse(await rr.text())}catch(e){throw new Error('Fichier de sauvegarde illisible')}if(!validB(o))throw new Error(badB(o));rem=o}
+      else if(mr.status!=404)throw new Error(herr(mr.status));
+      const before=H(snapshot().data);if(rem)applyRemote(rem);
+      const sn=snapshot(),after=H(sn.data);if(after!=before){got=true;save(true)}
+      const same=rem&&H(rem.data)==after&&H(rem.vdel||[])==H(sn.vdel||[]);
+      if(!same){const txt=JSON.stringify(sn,null,1),p=await api(g.path,{m:'PUT',b:{message:'Synchronisation Motor Manager Pro '+sn.exportedAt,content:b64(txt),branch:g.branch,sha}});
+        if(!p.ok){if((p.status==409||p.status==422)&&i<2)continue;throw new Error(herr(p.status))}
+        M.size=new Blob([txt]).size;
+        if(g.snap)try{await put(dir(g.path)+'history/backup-'+today()+'.json',txt,'Instantané '+today())}catch(e){}}
+      M.hash=after;M.last=sn.exportedAt;M.dirty=H(snapshot().data)!=after;stat('ok','');break}
+    if(got){if(!/INPUT|TEXTAREA|SELECT/.test(((typeof document!='undefined'&&document.activeElement)||{}).tagName||''))render();toast('Données synchronisées depuis GitHub')}
+    else if(manual)toast('Synchronisation réussie')}
+  catch(e){stat('fail',e.message);if(manual)toast(e.message,1)}busy=false}
+const syncOn=()=>tok()&&D.s.gh.freq=='sync'&&D.s.gh.owner&&D.s.gh.repo;
+const autoSync=()=>{if(syncOn()&&!busy&&Date.now()-(M.lastSync||0)>45000)ghSync(false)};
+
+/* ===== Stockage protégé (le navigateur n'efface pas les données automatiquement) ===== */
+async function storageInfo(){const e=$('#stinfo');if(!e)return;let p=null,u=null;
+  try{if(navigator.storage&&navigator.storage.persisted)p=await navigator.storage.persisted();if(navigator.storage&&navigator.storage.estimate){const x=await navigator.storage.estimate();u=x.usage}}catch(_){}
+  e.innerHTML='Stockage de l\'appareil : '+(p===true?'<span class="badge text-bg-success">protégé</span>':p===false?'<span class="badge text-bg-warning">non protégé</span> <button class="btn btn-sm btn-outline-dark ms-1" onclick="askPersist()">Demander la protection</button>':'<span class="text-muted">information indisponible</span>')+(u!=null?' · utilisé : '+(u/1048576).toFixed(1)+' Mo':'')}
+async function askPersist(){try{const ok=await navigator.storage.persist();toast(ok?'Stockage protégé : le navigateur ne l\'effacera pas automatiquement':'Demande refusée par le navigateur (installez l\'app sur l\'écran d\'accueil puis réessayez)',!ok)}catch(e){toast('Non pris en charge sur cet appareil',1)}storageInfo()}
+try{if(navigator.storage&&navigator.storage.persisted)navigator.storage.persisted().then(p=>p?0:navigator.storage.persist&&navigator.storage.persist()).catch(()=>{})}catch(e){}
+
+/* ===== Notice « nouvelle version disponible » ===== */
+let updShown=false;
+function showUpd(){if(updShown||typeof document=='undefined'||!document.body)return;updShown=true;
+  try{const b=document.createElement('div');b.id='upd';b.setAttribute('role','alert');b.innerHTML='<span>Une nouvelle version de l\'application est disponible.</span><button type="button" id="upd_go">Mettre à jour</button><button type="button" id="upd_x" aria-label="Plus tard">✕</button>';
+    document.body.appendChild(b);b.querySelector('#upd_go').onclick=()=>location.reload();b.querySelector('#upd_x').onclick=()=>b.remove()}catch(e){}}
+function checkUpdate(){if(typeof fetch!='function'||(navigator.onLine===false))return;
+  try{if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration)navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{})}catch(e){}
+  fetch('app.js',{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{const m=t.match(/APP_VER\s*=\s*'(\d[^']*)'/);if(m&&m[1]!==APP_VER)showUpd()}).catch(()=>{})}
 
 /* ===== Import de l'historique : Excel, CSV ou copier-coller ===== */
 let IMP=null;
@@ -516,9 +591,13 @@ VW.ins=()=>{const pl=plat(),sec=location.protocol=='https:'||location.hostname==
   ${card('ios','iPhone / iPad (Safari)','apple','<li>Ouvrez l\'adresse HTTPS dans <b>Safari</b>.</li><li>Touchez le bouton <b>Partager</b> (carré avec une flèche).</li><li>Choisissez <b>Sur l\'écran d\'accueil</b>, puis <b>Ajouter</b>.</li><li>Lancez l\'application depuis cette icône : l\'installation iOS ne montre pas de bouton automatique.</li>')}</div>
   <div class="card p-3 mb-3"><b>Héberger l'application (nécessaire pour l'installer)</b><ol class="small mt-2 mb-2 ps-3"><li>Créez un dépôt GitHub pour l'application (le code seul, aucune donnée personnelle).</li><li>Déposez-y : <code>index.html, styles.css, app.js, sw.js, manifest.json, icon-192.png, icon-512.png, icon-maskable-192.png, icon-maskable-512.png, apple-touch-icon.png</code> (10 fichiers, tous à la racine du dépôt).</li><li>Dépôt › <b>Settings › Pages › Deploy from a branch › main / (root)</b> : GitHub donne une adresse <code>https://votre-nom.github.io/nom-du-depot/</code>.</li><li>Ouvrez cette adresse sur chaque appareil, <b>deux fois</b> avec internet (pour la mise en cache hors ligne), puis installez.</li><li>Pour la sauvegarde des données, utilisez un <b>autre dépôt privé</b> et un jeton limité à ce seul dépôt (Paramètres › Sauvegarde GitHub).</li></ol></div>
   <div class="card p-3 mb-3"><b><i class="fa-solid fa-screwdriver-wrench"></i> L'application ne s'ouvre pas sur le téléphone ?</b><ol class="small mt-2 mb-2 ps-3"><li>Ouvrez l'adresse <b>https://…github.io/…</b> dans Chrome : un fichier téléchargé ou ouvert depuis le gestionnaire de fichiers (file://, content://) ne peut ni s'installer ni utiliser le mode hors ligne.</li><li>Avec internet, appuyez sur <b>Réparer</b> ci-dessous (vide le cache de cette application seulement), puis rouvrez-la.</li><li>Si l'ancienne icône reste cassée : désinstallez-la (appui long › Désinstaller), rouvrez l'adresse dans Chrome et réinstallez.</li><li>Après chaque mise à jour des fichiers sur GitHub, attendez 1 à 2 minutes avant de recharger.</li></ol><button class="btn btn-outline-dark btn-sm" onclick="mmpRepair()"><i class="fa-solid fa-rotate"></i> Réparer l'application</button></div>
-  <div class="alert alert-warning small mb-0"><b>Les données restent sur chaque appareil</b> (PC, téléphone et application installée ont chacun leur propre stockage). Pour les transférer ou les synchroniser : sauvegardez sur GitHub (ou en JSON) puis « Restaurer depuis GitHub » sur l'autre appareil. Si vous avez déjà saisi des données avec une autre adresse (par exemple le fichier ouvert directement), exportez-les d'abord en JSON, puis restaurez-les dans la version installée.</div>`};
+  <div class="alert alert-warning small mb-0"><b>Les données restent sur chaque appareil</b> (PC, téléphone et application installée ont chacun leur propre stockage). Pour les transférer ou les synchroniser : sauvegardez sur GitHub (ou en JSON) puis « Synchroniser maintenant » (ou « Remplacer mes données par GitHub ») sur l'autre appareil. Si vous avez déjà saisi des données avec une autre adresse (par exemple le fichier ouvert directement), exportez-les d'abord en JSON, puis restaurez-les dans la version installée.</div>`};
 
 /* ===== Démarrage (mode hors ligne via service worker, sur http/https) ===== */
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).catch(()=>{});
 setInterval(periodic,6e5);setTimeout(periodic,5000);
+setInterval(autoSync,3e5);setTimeout(autoSync,1500);setTimeout(checkUpdate,8000);setInterval(checkUpdate,18e5);
+if(typeof addEventListener=='function')addEventListener('online',()=>{if(syncOn())ghSync(false)});
+if(typeof document!='undefined'&&document.addEventListener)document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible'){autoSync();checkUpdate()}});
+if('serviceWorker' in navigator&&navigator.serviceWorker.addEventListener){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had)showUpd()})}
 render();
