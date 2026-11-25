@@ -1,7 +1,7 @@
 'use strict';
 /* ===== MOTOR MANAGER PRO v2 — données & utilitaires ===== */
 const KEY='mmp_v3',K2='mmp_v2',KT='mmp_gh_token',KM='mmp_meta',MN=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-const def=()=>({v:2,s:{veh:'Mon véhicule',start:9,end:6,price:15.2,ivl:5000,warn:500,big:500,cur:'DH',rd:14,bud:{},remain:null,tank:null,l100ref:null,l100mode:'auto',ce:['Carburant','Parking','Entretien','Vidange','Assurance','Autres'],cr:['Cours','Parking','Autres'],students:[],gh:{owner:'',repo:'',branch:'main',path:'backups/motor-manager-backup.json',dir:'backups/',freq:'daily',keep:0,snap:false}},km:[],exp:[],rev:[],fuel:[],oil:[],rem:[]});
+const def=()=>({v:2,s:{veh:'Mon véhicule',start:9,end:6,price:15.2,ivl:5000,warn:500,big:500,cur:'DH',rd:14,bud:{},remain:null,tank:null,l100ref:null,l100mode:'auto',ce:['Carburant','Parking','Entretien','Vidange','Assurance','Autres'],cr:['Cours','Parking','Autres'],students:[],gh:{owner:'',repo:'',branch:'main',path:'backups/motor-manager-backup.json',dir:'backups/',freq:'daily',keep:0,snap:false,sync:false}},km:[],exp:[],rev:[],fuel:[],oil:[],rem:[]});
 function merge(d,x){const gh=Object.assign(def().s.gh,x.s&&x.s.gh);Object.assign(d.s,x.s);d.s.gh=gh;['km','exp','rev','fuel','oil','rem'].forEach(k=>d[k]=Array.isArray(x[k])?x[k]:[]);return d}
 function load1(){try{let x=JSON.parse(localStorage.getItem(K2));if(!x){const o=JSON.parse(localStorage.getItem('mmp_v1'));if(o&&o.s){const sd={};o.km.forEach(r=>{if(!sd[r.date]||r.odo>sd[r.date].odo)sd[r.date]=r});x={s:{veh:o.s.veh,start:o.s.start,end:o.s.end,price:o.s.price,cur:o.s.cur,ce:o.s.ce,cr:o.s.cr},km:Object.values(sd).map(r=>({id:r.id,date:r.date,odo:r.odo})),exp:o.exp,rev:o.rev,fuel:o.fuel.map(f=>({...f,full:true})),oil:[]}}}if(x&&x.s)return merge(def(),x)}catch(e){}return def()}
 const nid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -11,7 +11,8 @@ let DB=loadDB(),D=DB.list.find(v=>v.id==DB.act)||DB.list[0],V='sai',AF=null;
 const linkGh=()=>DB.list.forEach(v=>v.s.gh=DB.gh);linkGh();const F={},E={},CH={},P={type:'saison',from:'',to:''};
 let M=Object.assign({st:'none',last:null,size:null,err:'',hash:null,local:null,dirty:false},(()=>{try{return JSON.parse(localStorage.getItem(KM))||{}}catch(e){return{}}})());
 const saveM=()=>localStorage.setItem(KM,JSON.stringify(M));
-const save=nd=>{localStorage.setItem(KEY,JSON.stringify(DB));if(!nd){M.dirty=true;saveM();sched()}};
+let syT=null;
+const save=nd=>{localStorage.setItem(KEY,JSON.stringify(DB));if(!nd){M.dirty=true;saveM();sched();syncSoon()}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const $=s=>document.querySelector(s);
 const nf=new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -414,7 +415,7 @@ VW.rep=()=>{const b=(f,l,i)=>`<button class="btn btn-outline-dark btn-sm me-1 mb
   <hr class="my-3"><b><i class="fa-brands fa-whatsapp"></i> Partager sur WhatsApp</b><p class="small text-muted mt-1">Sur téléphone, le menu de partage s'ouvre avec le PDF joint : choisissez WhatsApp. Sinon le PDF est téléchargé et WhatsApp s'ouvre avec le résumé : joignez simplement le fichier.</p>${b("pdfShare('mois')",'PDF mensuel','share-nodes')}${b("pdfShare('saison')",'PDF saisonnier','share-nodes')}${b("waText('mois')",'Résumé mensuel (texte)','comment')}${b("waText('saison')",'Résumé saisonnier (texte)','comment')}</div></div></div>`};
 
 /* ===== Sauvegarde locale JSON ===== */
-const APP_VER='2026.11.24';
+const APP_VER='2026.11.25';
 /* Un seul véhicule : format v2, lisible par TOUTES les versions de l'app. Plusieurs véhicules : format v3 (versions récentes uniquement). */
 const snapshot=()=>{const vs=DB.list.map(v=>{const d=JSON.parse(JSON.stringify(v));delete d.s.gh;return d}),b={app:'motor-manager-pro',exportedAt:new Date().toISOString(),appVersion:APP_VER};return vs.length==1?{...b,version:2,data:vs[0]}:{...b,version:3,data:{act:DB.act,vehicles:vs}}};
 const hash=o=>{const s=JSON.stringify(o);let h=5381;for(let i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return h+':'+s.length};
@@ -427,7 +428,7 @@ function restore(o,src,fromGh){if(!validB(o))return toast(badB(o),1);const vs=o.
   DB={v:3,act,list,gh:DB.gh};D=list.find(v=>v.id==act);linkGh();SY=null;Object.keys(E).forEach(k=>E[k]=null);save(true);if(fromGh){M.hash=hash(snapshot().data);M.dirty=false}else{M.dirty=true}saveM();render();toast('Données restaurées : statistiques recalculées')}
 function jsonOut(){M.local=new Date().toISOString();saveM();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(snapshot(),null,1)],{type:'application/json'}));a.download='motor-manager-backup-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);if(V=='bak')render()}
 function jsonIn(i){const f=i.files[0];if(!f)return;f.text().then(t=>{try{restore(JSON.parse(t),f.name)}catch(e){toast('Fichier JSON illisible',1)}});i.value=''}
-function resetAll(){if(prompt('Cette action efface TOUTES les données locales (tous les véhicules). Tapez SUPPRIMER pour confirmer.')!=='SUPPRIMER')return;const d=def();d.id=uid();DB={v:3,act:d.id,list:[d],gh:DB.gh};D=d;linkGh();SY=null;save();render();toast('Données réinitialisées')}
+function resetAll(){if(prompt(''+(D.s.gh.sync?'La synchronisation est ACTIVE : les données seront aussi effacées sur vos autres appareils.\n\n':'')+'Cette action efface TOUTES les données locales (tous les véhicules). Tapez SUPPRIMER pour confirmer.')!=='SUPPRIMER')return;const d=def();d.id=uid();DB={v:3,act:d.id,list:[d],gh:DB.gh};D=d;linkGh();SY=null;save();render();toast('Données réinitialisées')}
 VW.bak=()=>{AF=()=>{storageInfo();offlineInfo()};const g=D.s.gh,t=tok(),fo=(v,l)=>`<option value="${v}" ${g.freq==v?'selected':''}>${l}</option>`;
   return`<div class="card p-3 mb-3"><b>Sauvegarde locale (JSON, tous les véhicules)</b><p class="small text-muted">Dernier export : ${M.local?new Date(M.local).toLocaleString('fr-FR'):'jamais'}. Le jeton GitHub n'est jamais inclus.<br>Version de l'application : <b>${APP_VER}</b> · format de sauvegarde ${DB.list.length>1?'v3 (plusieurs véhicules : les anciennes versions ne peuvent pas la lire)':'v2 (lisible par toutes les versions)'}.</p><div id="stinfo" class="small mb-1"></div><div id="offinfo" class="small mb-1"></div><button class="btn btn-outline-secondary btn-sm mb-2" onclick="prepOffline()"><i class="fa-solid fa-plane"></i> Préparer le mode hors ligne</button>
   <div><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="jsonOut()"><i class="fa-solid fa-download"></i> Télécharger</button><label class="btn btn-outline-dark btn-sm me-1 mb-1"><i class="fa-solid fa-upload"></i> Restaurer un fichier<input type="file" accept=".json" hidden onchange="jsonIn(this)"></label><button class="btn btn-outline-secondary btn-sm me-1 mb-1" onclick="mmpRepair()" title="Vide le cache de l'application (pas vos données) et recharge la dernière version"><i class="fa-solid fa-arrows-rotate"></i> Mettre à jour l'application</button><button class="btn btn-outline-danger btn-sm mb-1" onclick="resetAll()"><i class="fa-solid fa-trash"></i> Réinitialiser</button></div></div>
@@ -440,7 +441,7 @@ VW.bak=()=>{AF=()=>{storageInfo();offlineInfo()};const g=D.s.gh,t=tok(),fo=(v,l)
   <div class="col-md-6"><label class="form-label small">Jeton d'accès personnel — actuel : <b>${t?'••••••••••••'+esc(t.slice(-4)):'aucun'}</b></label><input class="form-control" id="gh_tok" type="password" autocomplete="off" placeholder="Coller un jeton pour enregistrer ou remplacer"></div></div>
   <div class="mt-3"><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="ghCfg(true)">Enregistrer la configuration</button><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="ghTest()"><i class="fa-solid fa-plug"></i> Tester la connexion</button><button class="btn btn-acc btn-sm me-1 mb-1" onclick="ghCfg();ghPush(true)"><i class="fa-solid fa-cloud-arrow-up"></i> Sauvegarder maintenant</button><button class="btn btn-outline-dark btn-sm me-1 mb-1" onclick="ghList()"><i class="fa-solid fa-clock-rotate-left"></i> Voir les sauvegardes et restaurer</button><button class="btn btn-outline-danger btn-sm me-1 mb-1" onclick="ghCfg();ghPrune(true)"><i class="fa-solid fa-broom"></i> Supprimer les anciennes</button><button class="btn btn-outline-danger btn-sm mb-1" onclick="tokDel()">Supprimer le jeton</button></div>
   <div id="blist" class="mt-3"></div>
-  <div class="small text-muted mt-2">Pour révoquer le jeton côté GitHub : Settings › Developer settings › Personal access tokens. L'application reste utilisable sans GitHub ; les données restent d'abord dans ce navigateur.</div></div>`};
+  <div class="small text-muted mt-2">Pour révoquer le jeton côté GitHub : Settings › Developer settings › Personal access tokens. L'application reste utilisable sans GitHub ; les données restent d'abord dans ce navigateur.</div></div>${syncCard()}`};
 
 /* ===== Paramètres ===== */
 VW.set=()=>{const s=D.s,g=s.gh,t=tok(),op=v=>MN.map((n,i)=>`<option value="${i+1}" ${i+1==v?'selected':''}>${n}</option>`).join(''),ta=(id,l,a)=>`<div class="col-md-4"><label class="form-label small">${l} (une par ligne)</label><textarea class="form-control" id="${id}" rows="6">${esc(a.join('\n'))}</textarea></div>`,fo=(v,l)=>`<option value="${v}" ${g.freq==v?'selected':''}>${l}</option>`;
@@ -525,6 +526,109 @@ async function ghPrune(manual){const g=D.s.gh,days=+g.keep||0;
   catch(e){if(manual)toast(e.message,1)}}
 async function ghDelFile(n){const f=BL[n];if(!f)return;if(!confirm('Supprimer définitivement la sauvegarde du '+f.label+' ?\n\nCette action est irréversible.'))return;
   try{const d=await api(f.path,{m:'DELETE',b:{message:'Suppression de '+f.name,sha:f.sha,branch:D.s.gh.branch}});if(!d.ok&&d.status!=404)throw new Error(herr(d.status));toast('Sauvegarde supprimée');ghList()}catch(e){toast(e.message,1)}}
+
+
+/* ===== Synchronisation entre appareils (un seul fichier GitHub, fusion « à 3 voies ») =====
+   Fichier : <dossier>/sync/motor-manager-sync.json. Chaque appareil garde en local la dernière version synchronisée (« base »).
+   À chaque synchro : base / local / distant sont comparés enregistrement par enregistrement (par id) :
+   - modifié d'un seul côté → on prend la modification (ajout, changement ou suppression) ;
+   - modifié des deux côtés → la version de l'appareil qui synchronise l'emporte ;
+   - les listes de catégories / élèves sont fusionnées élément par élément.
+   Le résultat est appliqué en local puis renvoyé sur GitHub s'il diffère du fichier distant. */
+const SYNCK='mmp_syncbase',COLS=['km','exp','rev','fuel','oil','rem'];
+const stable=o=>o===undefined?'~':JSON.stringify(o,(k,v)=>v&&typeof v=='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce((a,x)=>(a[x]=v[x],a),{}):v);
+const eq=(a,b)=>stable(a)===stable(b);
+const byId=(a,b)=>a.id<b.id?-1:a.id>b.id?1:0;
+const stripV=v=>{const d=JSON.parse(JSON.stringify(v));if(d.s)delete d.s.gh;return d};
+const canon=vs=>vs.map(v=>{const o={...v};COLS.forEach(k=>o[k]=(v[k]||[]).slice().sort(byId));return o}).sort(byId);
+const isPristine=()=>DB.list.every(v=>COLS.every(k=>!(v[k]||[]).length));
+const editing=()=>{const a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.closest&&a.closest('#main'))};
+
+function mRecs(b,l,r){const bm=new Map(b.map(x=>[x.id,x])),lm=new Map(l.map(x=>[x.id,x])),rm=new Map(r.map(x=>[x.id,x])),out=[];
+  l.forEach(lv=>{const bv=bm.get(lv.id),rv=rm.get(lv.id);
+    if(!rv){if(bv&&eq(lv,bv))return;out.push(lv);return}          /* supprimé ailleurs et inchangé ici → supprimé */
+    if(bv&&eq(lv,bv)){out.push(rv);return}                         /* inchangé ici → version distante */
+    out.push(lv)});                                                /* modifié ici (ou ajouté des deux côtés) → version locale */
+  r.forEach(rv=>{if(lm.has(rv.id))return;const bv=bm.get(rv.id);if(bv&&eq(rv,bv))return;out.push(rv)});   /* nouveau ailleurs (ou supprimé ici et inchangé là-bas → reste supprimé) */
+  return out}
+function m3(b,l,r){
+  if(eq(l,r))return l;
+  if(b!==undefined){if(eq(l,b))return r;if(eq(r,b))return l}
+  if(l===undefined)return r;if(r===undefined)return l;
+  const po=x=>x&&typeof x=='object'&&!Array.isArray(x);
+  if(po(l)&&po(r)){const o={};new Set([...Object.keys(l),...Object.keys(r)]).forEach(k=>{const v=m3(po(b)?b[k]:undefined,l[k],r[k]);if(v!==undefined)o[k]=v});return o}
+  if(Array.isArray(l)&&Array.isArray(r)&&[...l,...r].every(x=>x===null||typeof x!='object')){const bb=Array.isArray(b)?b:[];
+    const o=l.filter(x=>!(bb.includes(x)&&!r.includes(x)));r.forEach(x=>{if(!l.includes(x)&&!bb.includes(x))o.push(x)});return o}
+  return l}
+function mVeh(b,l,r){b=b||{};const o={...l};o.s=m3(b.s,l.s||{},r.s||{});COLS.forEach(k=>o[k]=mRecs(b[k]||[],l[k]||[],r[k]||[]));return o}
+function mAll(B,L,R){const bm=new Map(B.map(v=>[v.id,v])),lm=new Map(L.map(v=>[v.id,v])),rm=new Map(R.map(v=>[v.id,v])),out=[];
+  L.forEach(lv=>{const bv=bm.get(lv.id),rv=rm.get(lv.id);
+    if(!rv){if(bv&&eq(lv,bv))return;out.push(lv);return}
+    if(bv&&eq(lv,bv)){out.push(rv);return}
+    if(bv&&eq(rv,bv)){out.push(lv);return}
+    out.push(mVeh(bv,lv,rv))});
+  R.forEach(rv=>{if(lm.has(rv.id))return;const bv=bm.get(rv.id);if(bv&&eq(rv,bv))return;out.push(rv)});
+  return out}
+
+const syPath=g=>bdir(g)+'sync/motor-manager-sync.json';
+let syncing=false,syAgain=false;
+function syStatus(){const s={ok:['success','Synchronisé'],pending:['warning','Synchronisation…'],fail:['danger','Échec']}[M.sy]||['secondary','Pas encore synchronisé'];
+  return`<div class="small"><span class="badge text-bg-${s[0]} me-2">${s[1]}</span>Dernière synchronisation : <b>${M.syLast?new Date(M.syLast).toLocaleString('fr-FR'):'jamais'}</b>${M.syErr?`<br><span class="text-danger">Dernière erreur : ${esc(M.syErr)}</span>`:''}</div>`}
+function syIcon(){const b=$('#syb');if(!b)return;const g=D.s.gh;b.hidden=!(g.sync&&tok());
+  const c={ok:['text-success','Synchronisé'],pending:['text-warning','Synchronisation…'],fail:['text-danger','Échec de la synchronisation']}[M.sy]||['text-secondary','Pas encore synchronisé'];
+  b.innerHTML='<i class="fa-solid fa-arrows-rotate '+c[0]+(M.sy=='pending'?' fa-spin':'')+'"></i>';
+  b.title=c[1]+(M.syLast?' · dernière : '+new Date(M.syLast).toLocaleString('fr-FR'):'')+(M.sy=='fail'&&M.syErr?' · '+M.syErr:'')+' (appuyer pour synchroniser)'}
+function syStat(s,e){M.sy=s;if(e!==undefined)M.syErr=e;saveM();const el=$('#syst');if(el)el.innerHTML=syStatus();syIcon()}
+function applySync(mj){const list=JSON.parse(mj).map(v=>{const d=merge(def(),v);d.id=v.id;return d});if(!list.length)throw new Error('Synchronisation annulée : le résultat ne contient aucun véhicule');
+  const ed=editing(),act=list.some(v=>v.id==DB.act)?DB.act:list[0].id;
+  DB={v:3,act,list,gh:DB.gh};D=list.find(v=>v.id==act);linkGh();SY=null;
+  if(!ed){Object.keys(E).forEach(k=>E[k]=null);Object.keys(F).forEach(k=>delete F[k])}
+  localStorage.setItem(KEY,JSON.stringify(DB));M.dirty=true;saveM();
+  if(!ed)render()}                                              /* en cours de saisie : on ne touche pas à l'écran, les nouvelles données s'affichent à la page suivante */
+async function ghSync(manual){
+  if(syncing){syAgain=true;return}
+  const g=D.s.gh;if(!tok()||!g.owner||!g.repo){if(manual)toast('Configuration GitHub incomplète (propriétaire, dépôt ou jeton)',1);return}
+  syncing=true;syStat('pending');
+  try{const path=syPath(g),q='?ref='+encodeURIComponent(g.branch);let base=null,changed=false;
+    try{base=JSON.parse(localStorage.getItem(SYNCK))}catch(e){}
+    if(base&&!Array.isArray(base.vehicles))base=null;
+    for(let i=0;i<3;i++){
+      let sha,remote=null;const r=await api(path,{q});
+      if(r.ok){const j=await r.json();sha=j.sha;let txt;
+        if(j.content&&j.encoding=='base64')txt=new TextDecoder().decode(Uint8Array.from(atob(j.content.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+        else{const rr=await api(path,{q,raw:1});if(!rr.ok)throw new Error(herr(rr.status));txt=await rr.text()}
+        let o;try{o=JSON.parse(txt)}catch(e){throw new Error('Fichier de synchronisation illisible')}
+        if(!validB(o))throw new Error(badB(o));remote=(o.version>=3?o.data.vehicles:[o.data]).map(stripV)}
+      else if(r.status!=404)throw new Error(herr(r.status));
+      const local=DB.list.map(stripV);let merged;
+      if(!remote)merged=local;
+      else if(!base&&isPristine())merged=remote;                                   /* appareil vide : on récupère simplement les données */
+      else{
+        if(!base&&!manual)throw new Error('Première synchronisation : appuyez sur « Synchroniser maintenant » (onglet Sauvegarde)');
+        if(!base&&i==0&&!confirm('Première synchronisation de cet appareil.\n\nLes données de cet appareil et celles de GitHub vont être FUSIONNÉES (rien n\'est effacé). Si les deux appareils ont chacun créé leur propre véhicule, vous aurez deux véhicules : supprimez simplement celui en trop.\n\nContinuer ?')){syStat('none','');return}
+        merged=mAll(base?base.vehicles:[],local,remote)}
+      const mj=JSON.stringify(merged);                                              /* instantané figé avant toute attente réseau */
+      if(!eq(canon(merged),canon(local))){applySync(mj);changed=true}
+      if(!remote||!eq(canon(merged),canon(remote))){
+        const body={message:'Synchronisation Motor Manager Pro',content:b64('{"app":"motor-manager-pro","kind":"sync","version":3,"exportedAt":"'+new Date().toISOString()+'","appVersion":"'+APP_VER+'","data":{"vehicles":'+mj+'}}'),branch:g.branch};
+        if(sha)body.sha=sha;
+        const p=await api(path,{m:'PUT',b:body});
+        if(!p.ok){if((p.status==409||p.status==422)&&i<2){base={vehicles:JSON.parse(mj)};continue}throw new Error(herr(p.status))}}
+      localStorage.setItem(SYNCK,'{"vehicles":'+mj+'}');M.syLast=new Date().toISOString();syStat('ok','');
+      if(manual)toast(changed?'Synchronisé : données mises à jour depuis GitHub':'Synchronisé : tout est à jour');
+      else if(changed)toast('Données mises à jour depuis un autre appareil');
+      if(V=='bak'&&!editing())render();
+      break}}
+  catch(e){syStat('fail',e.message);if(manual)toast(e.message,1)}
+  syncing=false;if(syAgain){syAgain=false;setTimeout(autoSync,1500)}}
+function autoSync(){const g=D.s.gh;if(!g.sync||!tok()||!g.owner||!g.repo||!navigator.onLine||document.visibilityState=='hidden')return;if(syncing){syAgain=true;return}ghSync(false)}
+function syncSoon(){if(!D.s.gh.sync)return;clearTimeout(syT);syT=setTimeout(autoSync,5000)}
+function syncToggle(on){D.s.gh.sync=!!on;localStorage.setItem(KEY,JSON.stringify(DB));syIcon();if(on){ghCfg();ghSync(true)}else toast('Synchronisation automatique désactivée')}
+const syncCard=()=>{const g=D.s.gh;return`<div class="card p-3 mb-3"><b><i class="fa-solid fa-arrows-rotate"></i> Synchronisation entre appareils</b>
+  <div class="alert alert-info small my-2">Tous vos téléphones partagent <b>un seul fichier</b> dans le dépôt GitHub configuré ci-dessus (<code>${esc(bdir(g))}sync/motor-manager-sync.json</code>). À chaque synchronisation, l'appareil <b>fusionne</b> ses changements avec ceux des autres (ajouts, modifications, suppressions) : rien n'est remplacé en bloc. Sur un appareil vide, la première synchronisation récupère simplement les données. Configurez <b>le même dépôt, la même branche, le même dossier et un jeton</b> sur chaque appareil. Si deux appareils modifient le <b>même</b> enregistrement en même temps, celui qui synchronise en dernier l'emporte.</div>
+  <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="gh_sync" ${g.sync?'checked':''} onchange="syncToggle(this.checked)"><label class="form-check-label" for="gh_sync">Synchronisation automatique (à l'ouverture, après chaque modification, puis toutes les 90 s)</label></div>
+  <div id="syst" class="my-2">${syStatus()}</div>
+  <button class="btn btn-acc btn-sm" onclick="ghCfg();ghSync(true)"><i class="fa-solid fa-arrows-rotate"></i> Synchroniser maintenant</button></div>`};
 
 /* ===== Stockage protégé (le navigateur n'efface pas les données automatiquement) ===== */
 async function storageInfo(){const e=$('#stinfo');if(!e)return;let p=null,u=null;
@@ -637,8 +741,8 @@ VW.ins=()=>{const pl=plat(),sec=location.protocol=='https:'||location.hostname==
 
 /* ===== Démarrage (mode hors ligne via service worker, sur http/https) ===== */
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).catch(()=>{});
-setInterval(periodic,6e5);setTimeout(periodic,5000);setTimeout(checkUpdate,8000);setInterval(checkUpdate,18e5);setTimeout(askPrecache,3000);
-if(typeof addEventListener=='function')addEventListener('online',()=>{periodic();askPrecache()});
-if(typeof document!='undefined'&&document.addEventListener)document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible'){periodic();checkUpdate()}});
+setInterval(periodic,6e5);setTimeout(periodic,5000);setInterval(autoSync,9e4);setTimeout(autoSync,2500);setTimeout(checkUpdate,8000);setInterval(checkUpdate,18e5);setTimeout(askPrecache,3000);
+if(typeof addEventListener=='function')addEventListener('online',()=>{periodic();autoSync();askPrecache()});
+if(typeof document!='undefined'&&document.addEventListener)document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible'){periodic();autoSync();checkUpdate()}});
 if('serviceWorker' in navigator&&navigator.serviceWorker.addEventListener){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had)showUpd()})}
-render();
+syIcon();render();
