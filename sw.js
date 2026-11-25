@@ -3,7 +3,7 @@
    la copie locale). Bibliothèques CDN, feuilles de style et POLICES (icônes, Plus Jakarta Sans) : copiées à l'installation, puis
    servies depuis le cache. L'application peut demander de recompléter le cache (message « precache »).
    Ne touche qu'à ses propres caches (préfixe « mmp- »), pour ne jamais effacer ceux d'une autre application hébergée sur la même adresse. */
-const PREFIX = 'mmp-', CACHE = 'mmp-v14', TIMEOUT = 4000;
+const PREFIX = 'mmp-', CACHE = 'mmp-v15', TIMEOUT = 4000;
 const LOCAL = ['./', './index.html', './styles.css', './app.js', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-192.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 const CSS = ['https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css', 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap'];
 const JS = ['https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];

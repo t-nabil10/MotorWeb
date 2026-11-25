@@ -1,7 +1,7 @@
 'use strict';
 /* ===== MOTOR MANAGER PRO v2 — données & utilitaires ===== */
 const KEY='mmp_v3',K2='mmp_v2',KT='mmp_gh_token',KM='mmp_meta',MN=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-const def=()=>({v:2,s:{veh:'Mon véhicule',start:9,end:6,price:15.2,ivl:5000,warn:500,big:500,cur:'DH',rd:14,bud:{},remain:null,tank:null,l100ref:null,l100mode:'auto',ce:['Carburant','Parking','Entretien','Vidange','Assurance','Autres'],cr:['Cours','Parking','Autres'],gh:{owner:'',repo:'',branch:'main',path:'backups/motor-manager-backup.json',dir:'backups/',freq:'daily',keep:0,snap:false}},km:[],exp:[],rev:[],fuel:[],oil:[],rem:[]});
+const def=()=>({v:2,s:{veh:'Mon véhicule',start:9,end:6,price:15.2,ivl:5000,warn:500,big:500,cur:'DH',rd:14,bud:{},remain:null,tank:null,l100ref:null,l100mode:'auto',ce:['Carburant','Parking','Entretien','Vidange','Assurance','Autres'],cr:['Cours','Parking','Autres'],students:[],gh:{owner:'',repo:'',branch:'main',path:'backups/motor-manager-backup.json',dir:'backups/',freq:'daily',keep:0,snap:false}},km:[],exp:[],rev:[],fuel:[],oil:[],rem:[]});
 function merge(d,x){const gh=Object.assign(def().s.gh,x.s&&x.s.gh);Object.assign(d.s,x.s);d.s.gh=gh;['km','exp','rev','fuel','oil','rem'].forEach(k=>d[k]=Array.isArray(x[k])?x[k]:[]);return d}
 function load1(){try{let x=JSON.parse(localStorage.getItem(K2));if(!x){const o=JSON.parse(localStorage.getItem('mmp_v1'));if(o&&o.s){const sd={};o.km.forEach(r=>{if(!sd[r.date]||r.odo>sd[r.date].odo)sd[r.date]=r});x={s:{veh:o.s.veh,start:o.s.start,end:o.s.end,price:o.s.price,cur:o.s.cur,ce:o.s.ce,cr:o.s.cr},km:Object.values(sd).map(r=>({id:r.id,date:r.date,odo:r.odo})),exp:o.exp,rev:o.rev,fuel:o.fuel.map(f=>({...f,full:true})),oil:[]}}}if(x&&x.s)return merge(def(),x)}catch(e){}return def()}
 const nid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -149,7 +149,7 @@ function cardLabels(){document.querySelectorAll('table.table-cards').forEach(t=>
   t.querySelectorAll('tbody tr,tfoot tr').forEach(r=>[...r.children].forEach((c,i)=>{if(h[i]&&!(i==0&&r.parentNode.tagName=='TFOOT'))c.setAttribute('data-label',h[i])}))})}
 
 /* ===== Navigation ===== */
-const NAV=[['sai','Saisie du jour','pen-to-square'],['dash','Tableau de bord','gauge-high'],['fuel','Carburant','gas-pump'],['oil','Vidange','oil-can'],['mnt','Entretien','screwdriver-wrench'],['stat','Statistiques','chart-column'],['hkm','Historique km','road'],['hexp','Historique dépenses','wallet'],['hrev','Historique recettes','sack-dollar'],['imp','Importer des données','file-import'],['rep','Rapports & exports','file-export'],['bak','Sauvegarde','cloud-arrow-up'],['veh','Véhicules','car'],['set','Paramètres','gear'],['ins','Installer l\'app','download']];
+const NAV=[['sai','Saisie du jour','pen-to-square'],['dash','Tableau de bord','gauge-high'],['fuel','Carburant','gas-pump'],['oil','Vidange','oil-can'],['mnt','Entretien','screwdriver-wrench'],['stat','Statistiques','chart-column'],['hkm','Historique km','road'],['hexp','Historique dépenses','wallet'],['hrev','Historique recettes','sack-dollar'],['imp','Importer des données','file-import'],['rep','Rapports & exports','file-export'],['bak','Sauvegarde','cloud-arrow-up'],['stu','Élèves','user-graduate'],['veh','Véhicules','car'],['set','Paramètres','gear'],['ins','Installer l\'app','download']];
 function go(v){V=v;$('#side').classList.remove('open');render();scrollTo(0,0)}
 function render(){Object.values(CH).forEach(c=>c.destroy());for(const k in CH)delete CH[k];
   $('#nav').innerHTML=NAV.map(n=>`<a class="${n[0]==V?'on':''}" onclick="go('${n[0]}')"><i class="fa-solid fa-${n[2]}"></i>${n[1]}</a>`).join('')+(typeof DIP!='undefined'&&DIP&&!standalone()?'<a onclick="doInstall()" style="background:rgba(233,162,59,.18);color:#e9a23b"><i class="fa-solid fa-download"></i>Installer l\'application</a>':'');
@@ -162,7 +162,7 @@ function kmInfo(){const d=X.date,ex=D.km.find(r=>r.date==d),v=X.odo===null?(ex?e
 function kmLive(){const k=kmInfo(),c=(l,v,x='')=>`<div class="col-md-2 col-6"><div class="small text-muted">${l}</div><b class="${x}">${v}</b></div>`;
   return`<div class="row g-2 mt-1">${c('Relevé précédent',fn(k.prev,' km'))}${c('Compteur actuel',fn(k.cur,' km'))}${c('Distance du jour',k.dist==null?'-':fn(k.dist,' km'),k.dist<0?'text-danger':'')}${c('Distance du mois',fn(k.m,' km'))}${c('Total depuis le début',fn(k.t,' km'))}</div>${k.dist<0?'<div class="text-danger small mt-1">Le compteur est inférieur au relevé précédent.</div>':''}`}
 const updKm=()=>{const e=$('#kmlive');if(e)e.innerHTML=kmLive();const g=$('#gaugebox');if(g)g.innerHTML=gauge(kmInfo().cur)};
-function xrows(k){const cs=k=='xl'?D.s.ce:D.s.cr;return X[k].map((r,i)=>`<div class="row g-2 mb-2"><div class="col-md-3 col-6"><select class="form-select" onchange="X.${k}[${i}].cat=this.value">${cs.map(c=>`<option ${c==(r.cat||cs[0])?'selected':''}>${esc(c)}</option>`).join('')}</select></div><div class="col-md-5 col-12"><input class="form-control" placeholder="Description" value="${esc(r.desc)}" oninput="X.${k}[${i}].desc=this.value"></div><div class="col-md-3 col-8"><input class="form-control" type="number" step="any" inputmode="decimal" placeholder="Montant (DH)" value="${esc(r.amt)}" oninput="X.${k}[${i}].amt=this.value"></div><div class="col-md-1 col-4"><button class="btn btn-light" title="Retirer" onclick="X.${k}.splice(${i},1);if(!X.${k}.length)X.${k}.push({cat:'',desc:'',amt:''});render()">×</button></div></div>`).join('')}
+function xrows(k){const cs=k=='xl'?D.s.ce:D.s.cr;return X[k].map((r,i)=>`<div class="row g-2 mb-2"><div class="col-md-3 col-6"><select class="form-select" onchange="X.${k}[${i}].cat=this.value${k=='rl'?';render()':''}">${cs.map(c=>`<option ${c==(r.cat||cs[0])?'selected':''}>${esc(c)}</option>`).join('')}</select></div><div class="col-md-5 col-12">${descCtl(k,i,r)}</div><div class="col-md-3 col-8"><input class="form-control" type="number" step="any" inputmode="decimal" placeholder="Montant (DH)" value="${esc(r.amt)}" oninput="X.${k}[${i}].amt=this.value"></div><div class="col-md-1 col-4"><button class="btn btn-light" title="Retirer" onclick="X.${k}.splice(${i},1);if(!X.${k}.length)X.${k}.push({cat:'',desc:'',amt:''});render()">×</button></div></div>`).join('')}
 function saiSave(){const d=X.date;if(!d)return toast('Date requise',1);
   const odo=X.odo===''||X.odo==null?null:num(X.odo),ex=D.km.find(r=>r.date==d);
   if(X.odo!==null&&X.odo!==''&&(isNaN(odo)||odo<0))return toast('Compteur invalide',1);
@@ -172,7 +172,8 @@ function saiSave(){const d=X.date;if(!d)return toast('Date requise',1);
   if(odo==null&&!xs.length&&!rs.length)return toast('Rien à enregistrer',1);
   if(odo!=null){ex?ex.odo=odo:D.km.push({id:uid(),date:d,odo})}
   xs.forEach(r=>D.exp.push({id:uid(),date:d,note:'',...r}));rs.forEach(r=>D.rev.push({id:uid(),date:d,note:'',...r}));
-  X.odo=null;X.xl=[{cat:'',desc:'',amt:''}];X.rl=[{cat:'',desc:'',amt:''}];save();render();toast('Journée enregistrée')}
+  const nn=[...new Set(rs.filter(r=>isCours(r.cat)&&r.desc&&r.desc.length<=40&&!stuAll().some(x=>norm(x)==norm(r.desc))).map(r=>r.desc))];
+  X.odo=null;X.xl=[{cat:'',desc:'',amt:''}];X.rl=[{cat:'',desc:'',amt:''}];save();render();toast('Journée enregistrée',0,nn.length?{l:'Ajouter '+(nn.length==1?'« '+nn[0]+' »':nn.length+' noms')+' aux élèves',f:()=>setStu([...stuAll(),...nn])}:undefined)}
 const VW_sai=()=>{const ex=D.km.find(r=>r.date==X.date),ov=X.odo===null?(ex?ex.odo:''):X.odo;
   return`${bnr()}<div class="card p-3 mb-3"><div class="row g-2 align-items-end"><div class="col-md-3 col-6"><label class="form-label small">Date</label><input type="date" class="form-control" value="${X.date}" onchange="X.date=this.value;X.odo=null;render()"></div></div></div>
   <div id="gaugebox">${gauge()}</div><div class="card p-3 mb-3"><b class="mb-2"><i class="fa-solid fa-road"></i> Kilométrage ${ex?'<span class="badge text-bg-info">relevé existant : modification</span>':''}</b><div class="row g-2">${inp('odo','Compteur actuel (km)',ov,'number','col-md-3 col-12','oninput="X.odo=this.value;updKm()"')}</div><div id="kmlive">${kmLive()}</div></div>
@@ -181,12 +182,13 @@ const VW_sai=()=>{const ex=D.km.find(r=>r.date==X.date),ov=X.odo===null?(ex?ex.o
   <button class="btn btn-acc btn-lg" onclick="saiSave()"><i class="fa-solid fa-check"></i> Enregistrer la journée</button> <span class="small text-muted ms-2">Les sections vides sont ignorées.</span>`};
 
 /* ===== CRUD générique (historiques, carburant, vidange) ===== */
-const cat=k=>({n:'cat',l:'Catégorie',t:'sel',opts:()=>D.s[k]}),dt={n:'date',l:'Date',t:'date'},nt={n:'note',l:'Notes',t:'text',o:1},ds={n:'desc',l:'Description',t:'text',o:1},am={n:'amt',l:'Montant (DH)',t:'number'},od={n:'odo',l:'Compteur (km)',t:'number'};
-const FL={exp:[dt,cat('ce'),ds,am,nt],rev:[dt,ds,cat('cr'),am,nt],km:[dt,od],
+const cat=k=>({n:'cat',l:'Catégorie',t:'sel',opts:()=>D.s[k]}),dt={n:'date',l:'Date',t:'date'},nt={n:'note',l:'Notes',t:'text',o:1},ds={n:'desc',l:'Description',t:'text',o:1},dsr={n:'desc',l:'Description / élève',t:'stu',o:1},am={n:'amt',l:'Montant (DH)',t:'number'},od={n:'odo',l:'Compteur (km)',t:'number'};
+const FL={exp:[dt,cat('ce'),ds,am,nt],rev:[dt,dsr,{...cat('cr'),x:'onchange="stuCat()"'},am,nt],km:[dt,od],
  fuel:[dt,{...od,o:1},{n:'ppl',l:'Prix du litre (DH/L)',t:'number',o:1,x:'oninput="fuelCalc()"'},{...am,o:1,l:'Montant payé (DH)',x:'oninput="fuelCalc()"'},{n:'liters',l:'Litres ajoutés (calculé)',t:'number',o:1},{n:'full',l:'Type de plein',t:'sel',opts:()=>['Plein complet','Partiel']},nt],
  oil:[dt,od,{n:'ivl',l:'Intervalle (km)',t:'number',o:1},{n:'type',l:'Type d\'huile',t:'text',o:1},{...am,o:1},nt]};
 function fld(f,rec){let v=rec?rec[f.n]:null;if(f.n=='full'&&rec)v=rec.full?'Plein complet':'Partiel';
-  if(f.t=='sel')return`<div class="col-md-3 col-6"><label class="form-label small">${f.l}</label><select class="form-select" id="f_${f.n}">${f.opts().map(o=>`<option ${o==v?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
+  if(f.t=='stu')return stuField(rec);
+  if(f.t=='sel')return`<div class="col-md-3 col-6"><label class="form-label small">${f.l}</label><select class="form-select" id="f_${f.n}" ${f.x||''}>${f.opts().map(o=>`<option ${o==v?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
   return inp('f_'+f.n,f.l,v!=null?v:(f.t=='date'?today():(f.n=='ppl'&&!rec?lastPpl():'')),f.t,'col-md-3 col-6',f.x||'')}
 const lastPpl=()=>{const f=srt(D.fuel)[0];return f&&f.ppl?+f.ppl.toFixed(2):D.s.price};
 function fuelCalc(){const a=num($('#f_amt').value||''),p=num($('#f_ppl').value||''),e=$('#f_liters');if(e&&a>0&&p>0)e.value=(a/p).toFixed(2)}
@@ -315,6 +317,50 @@ function pdfShare(k){const b=pdfBuild(k),f=typeof File=='function'?new File([b.d
   b.d.save(b.name);window.open('https://wa.me/?text='+encodeURIComponent(b.txt),'_blank');toast('PDF téléchargé : joignez-le à la conversation WhatsApp')}
 const pdf=k=>{const b=pdfBuild(k);b.d.save(b.name)};
 
+/* ===== Élèves : liste de noms, choix dans la saisie des cours (liste déroulante ou saisie libre) ===== */
+const isCours=c=>/cours/i.test(c||'');
+const stuAll=()=>D.s.students||[];
+function setStu(a){D.s.students=a;DB.list.forEach(v=>v.s.students=a.slice());save();render()}
+function stuAdd(){const el=$('#st_new'),ns=String(el.value||'').split(/[,;\n]/).map(x=>x.trim()).filter(Boolean),cur=stuAll(),
+    add=ns.filter((n,i)=>!cur.some(c=>norm(c)==norm(n))&&ns.findIndex(m=>norm(m)==norm(n))==i);
+  if(!ns.length)return toast('Saisissez au moins un nom',1);if(!add.length)return toast('Ces élèves sont déjà dans la liste',1);
+  setStu([...cur,...add]);toast(add.length+' élève'+(add.length>1?'s ajoutés':' ajouté'))}
+function stuRename(i){const old=stuAll()[i],n=(prompt('Nouveau nom pour « '+old+' » :',old)||'').trim();if(!n||n==old)return;
+  if(stuAll().some((c,j)=>j!=i&&norm(c)==norm(n)))return toast('Ce nom existe déjà',1);
+  const k=DB.list.reduce((s,v)=>s+v.rev.filter(r=>r.desc==old).length,0);
+  if(k&&confirm('Renommer aussi les '+k+' recette'+(k>1?'s':'')+' déjà enregistrée'+(k>1?'s':'')+' au nom de « '+old+' » ?'))DB.list.forEach(v=>v.rev.forEach(r=>{if(r.desc==old)r.desc=n}));
+  const a=stuAll().slice();a[i]=n;setStu(a);toast('Élève renommé')}
+function stuDel(i){const n=stuAll()[i];if(!confirm('Retirer « '+n+' » de la liste ?\nLes recettes déjà enregistrées ne sont pas modifiées.'))return;
+  const a=stuAll().slice();a.splice(i,1);setStu(a);toast('Élève retiré de la liste',0,{l:'Annuler',f:()=>{const b=stuAll().slice();b.splice(Math.min(i,b.length),0,n);setStu(b)}})}
+/* description d'une recette dans la saisie du jour : liste d'élèves pour les catégories « cours », champ libre sinon (ou via « Autre ») */
+function descCtl(k,i,r){const st=stuAll(),cat=r.cat||D.s.cr[0],plain=`<input class="form-control" placeholder="Description" value="${esc(r.desc)}" oninput="X.${k}[${i}].desc=this.value">`;
+  if(k!='rl'||!isCours(cat))return plain;
+  if(!st.length)return plain+'<div class="form-text">Ajoutez vos élèves dans l\'onglet « Élèves » pour les choisir dans une liste.</div>';
+  if(r.free||(r.desc&&!st.includes(r.desc)))return`<div class="input-group"><input class="form-control" placeholder="Nom ou description (saisie libre)" value="${esc(r.desc)}" oninput="X.rl[${i}].desc=this.value;X.rl[${i}].free=true"><button class="btn btn-light" type="button" title="Choisir dans la liste" aria-label="Choisir dans la liste" onclick="X.rl[${i}].free=false;X.rl[${i}].desc='';render()"><i class="fa-solid fa-list"></i></button></div>`;
+  return`<select class="form-select" onchange="stuPick(${i},this.value)"><option value="">— Choisir un élève —</option>${st.map(n=>`<option ${n==r.desc?'selected':''}>${esc(n)}</option>`).join('')}<option value="__free">✎ Autre (saisie libre)…</option></select>`}
+function stuPick(i,v){const r=X.rl[i];if(v=='__free'){r.free=true;r.desc='';render()}else{r.desc=v;r.free=false}}
+/* même principe dans le formulaire des recettes (historique) */
+function stuField(rec){const st=stuAll(),v=rec&&rec.desc||'',cours=isCours(rec?rec.cat:D.s.cr[0]),list=st.length&&cours&&(!v||st.includes(v));
+  return`<div class="col-md-3 col-6"><label class="form-label small">Description / élève</label>
+  <select class="form-select ${list?'':'d-none'}" id="f_stsel" onchange="stuSel(this.value)"><option value="">— Choisir un élève —</option>${st.map(n=>`<option ${n==v?'selected':''}>${esc(n)}</option>`).join('')}<option value="__free">✎ Autre (saisie libre)…</option></select>
+  <input class="form-control ${list?'d-none':''}" id="f_desc" placeholder="Nom ou description" value="${esc(v)}">
+  <a href="#" class="small ${st.length&&cours&&!list?'':'d-none'}" id="f_stback" onclick="stuBack();return false">↩ choisir dans la liste</a></div>`}
+const cl=(e,c,on)=>e&&e.classList[on?'add':'remove'](c);
+function stuSel(v){const t=$('#f_desc');if(v=='__free'){cl($('#f_stsel'),'d-none',1);cl(t,'d-none',0);cl($('#f_stback'),'d-none',0);t.value='';t.focus()}else t.value=v}
+function stuBack(){cl($('#f_stsel'),'d-none',0);cl($('#f_desc'),'d-none',1);cl($('#f_stback'),'d-none',1);$('#f_stsel').value='';$('#f_desc').value=''}
+function stuCat(){const st=stuAll(),c=$('#f_cat'),s=$('#f_stsel'),t=$('#f_desc');if(!c||!s||!t)return;const cours=isCours(c.value),list=cours&&st.length&&(!t.value||st.includes(t.value));
+  cl(s,'d-none',!list);cl(t,'d-none',!!list);cl($('#f_stback'),'d-none',!(cours&&st.length&&!list));if(list)s.value=st.includes(t.value)?t.value:''}
+VW.stu=()=>{const r=SR(),st=stuAll(),rv=DB.list.flatMap(v=>v.rev).filter(x=>isCours(x.cat)&&inR(x.date,r)),
+  rows=st.map((n,i)=>{const L=rv.filter(x=>x.desc==n);return{n,i,c:L.length,t:L.reduce((s,x)=>s+x.amt,0),last:L.length?srt(L)[0].date:''}}),
+  lib=rv.filter(x=>!st.includes(x.desc)),tot=rows.reduce((s,x)=>s+x.t,0)+lib.reduce((s,x)=>s+x.amt,0);
+  return`<div class="card p-3 mb-3"><b class="mb-2"><i class="fa-solid fa-user-plus"></i> Ajouter des élèves</b><div class="row g-2 align-items-end">${inp('st_new','Nom(s) (séparés par une virgule ou un retour à la ligne)','','text','col-md-6 col-12')}<div class="col-md-3 col-6"><button class="btn btn-acc" onclick="stuAdd()"><i class="fa-solid fa-plus"></i> Ajouter</button></div></div>
+  <div class="small text-muted mt-2">Dans « Saisie du jour » et « Recettes », quand la catégorie contient « cours », la description devient une <b>liste déroulante</b> de ces élèves, avec l'option <b>« Autre (saisie libre) »</b> pour un nom absent de la liste.</div></div>
+  <div class="row g-2 mb-2">${ssel()}</div>
+  <div class="card mb-3"><div class="table-responsive"><table class="table table-cards mb-0"><thead><tr><th>Élève</th><th class="num">Séances</th><th class="num">Total encaissé</th><th>Dernière séance</th><th></th></tr></thead><tbody>
+  ${rows.length?rows.map(x=>`<tr><td><b>${esc(x.n)}</b></td><td class="num">${x.c}</td><td class="num">${fm(x.t)}</td><td>${x.last?fd(x.last):'—'}</td><td class="num"><button class="btn btn-sm btn-light" onclick="stuRename(${x.i})" aria-label="Renommer ${esc(x.n)}"><i class="fa-solid fa-pen"></i></button> <button class="btn btn-sm btn-light text-danger" onclick="stuDel(${x.i})" aria-label="Retirer ${esc(x.n)}"><i class="fa-solid fa-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="5" class="text-muted">Aucun élève pour le moment.</td></tr>'}
+  ${lib.length?`<tr><td><i>Autres (saisie libre)</i></td><td class="num">${lib.length}</td><td class="num">${fm(lib.reduce((s,x)=>s+x.amt,0))}</td><td>${fd(srt(lib)[0].date)}</td><td></td></tr>`:''}
+  </tbody><tfoot><tr class="fw-bold"><td>Total des cours (${esc(slabel(sy()))})</td><td class="num">${rv.length}</td><td class="num">${fm(tot)}</td><td></td><td></td></tr></tfoot></table></div></div>`};
+
 /* ===== Tableau de bord & statistiques ===== */
 VW.dash=()=>{const r=range(),t=T(r),ms=monthly(),L=ms.map(x=>x.name.slice(0,4)),fs=fstat(),o=oilStat();
   AF=()=>{ch('c1','bar',L,[{label:'Recettes',data:ms.map(x=>x.v)},{label:'Dépenses',data:ms.map(x=>x.e)}]);ch('c2','line',L,[{label:'Solde net (DH)',data:ms.map(x=>x.net)}]);const cs=catSum(D.exp,r);ch('c3','doughnut',Object.keys(cs),[{data:Object.values(cs)}]);
@@ -368,7 +414,7 @@ VW.rep=()=>{const b=(f,l,i)=>`<button class="btn btn-outline-dark btn-sm me-1 mb
   <hr class="my-3"><b><i class="fa-brands fa-whatsapp"></i> Partager sur WhatsApp</b><p class="small text-muted mt-1">Sur téléphone, le menu de partage s'ouvre avec le PDF joint : choisissez WhatsApp. Sinon le PDF est téléchargé et WhatsApp s'ouvre avec le résumé : joignez simplement le fichier.</p>${b("pdfShare('mois')",'PDF mensuel','share-nodes')}${b("pdfShare('saison')",'PDF saisonnier','share-nodes')}${b("waText('mois')",'Résumé mensuel (texte)','comment')}${b("waText('saison')",'Résumé saisonnier (texte)','comment')}</div></div></div>`};
 
 /* ===== Sauvegarde locale JSON ===== */
-const APP_VER='2026.11.22.7';
+const APP_VER='2026.11.24';
 /* Un seul véhicule : format v2, lisible par TOUTES les versions de l'app. Plusieurs véhicules : format v3 (versions récentes uniquement). */
 const snapshot=()=>{const vs=DB.list.map(v=>{const d=JSON.parse(JSON.stringify(v));delete d.s.gh;return d}),b={app:'motor-manager-pro',exportedAt:new Date().toISOString(),appVersion:APP_VER};return vs.length==1?{...b,version:2,data:vs[0]}:{...b,version:3,data:{act:DB.act,vehicles:vs}}};
 const hash=o=>{const s=JSON.stringify(o);let h=5381;for(let i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return h+':'+s.length};
